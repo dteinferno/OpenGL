@@ -20,7 +20,7 @@ extern float dy1;
 
 void InitOffset(void);
 
-void TimeOffset(float &tOffset, time_t start);
+void TimeOffset(float &tOffset, int dir, time_t start);
 
 void TreadMillStart(void);
 

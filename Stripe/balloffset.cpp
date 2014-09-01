@@ -32,25 +32,19 @@ void InitOffset()
 	//Initialize the treadmill
 	TreadMillStart();
 
-	//Generate a random starting offset
-	srand(time(0));
-	io_mutex.lock();
-	BallOffset = fmod(rand(), 240) - 120.0f;
-	io_mutex.unlock();
-
 	boost::thread thrd(&TreadMillDat);
 
 }
 
 // FOR OPEN LOOP STRIPE
 // Set the loop duration for the stripe and calculate the offset due to time passing
-void TimeOffset(float &tOffset, __int64 start) {
+void TimeOffset(float &tOffset, int dir, __int64 start) {
 	// get delta time for this iteration:
 	QueryPerformanceCounter(&li);
 	float fDeltaTime = (li.QuadPart - start) / PCFreq;
 	float period = 20;
 	float gain = 360 / period;
-	tOffset = fDeltaTime*gain;
+	tOffset = dir*fDeltaTime*gain;
 }
 
 

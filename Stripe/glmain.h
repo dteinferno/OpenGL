@@ -39,6 +39,6 @@ extern float BallOffsetNow;
 
 void InitOpenGL(void);
 
-void RenderFrame(int windowNum);
+void RenderFrame(int windowNum, int direction);
 
 void GLShutdown(void);

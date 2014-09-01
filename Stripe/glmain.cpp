@@ -243,7 +243,7 @@ void InitOpenGL(void)
 	glViewport(0, 0, SCRWIDTH, SCRHEIGHT);
 }
 
-void RenderFrame(int windowNum)
+void RenderFrame(int windowNum, int direction)
 {
 	glm::mat4 identity;
 	ProjectionMatrix = glm::perspective(float(360 / M_PI * atanf(tanf(fovAng / 2) * float(SCRHEIGHT) / float(SCRWIDTH))), float(SCRWIDTH) / float(SCRHEIGHT), 0.1f, 1000.0f);
@@ -268,7 +268,7 @@ void RenderFrame(int windowNum)
 		else
 		{
 			//Advance the stripe over time - FOR OPEN LOOP
-			TimeOffset(BallOffsetNow, CounterStart);
+			TimeOffset(BallOffsetNow, direction, CounterStart);
 		}
 		ModelMatrix = glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetNow  * M_PI / 180)), 0.0f)) * glm::rotate(identity, BallOffsetNow, glm::vec3(0.0f, 0.0f, 1.0f));
 		glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
@@ -296,6 +296,8 @@ void RenderFrame(int windowNum)
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(GLfloat)));
 	}
 
+	if (direction == 0)
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 }
 

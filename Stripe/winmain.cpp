@@ -205,21 +205,11 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 	// Create the windows
 	CreateWnd(hinstance, SCRWIDTH, SCRHEIGHT, SCRDEPTH);
 
-	// Ask if open or closed loop
-	HWND hwndoc;
-
-	//Switch from open loop to closed loop
-	int	msgboxID = MessageBox(NULL, "Closed Loop?", "Open or Closed Loop", MB_ICONQUESTION | MB_YESNOCANCEL | MB_DEFAULT_DESKTOP_ONLY | MB_SETFOREGROUND);
-	closed = 7 - msgboxID;
-	if (closed != 0 || closed != 1)
-	{
-		quit == true;
-	}
-
 	// Prompt the user for a filename and directory
 	OPENFILENAME ofn;       // common dialog box structure
 	ZeroMemory(&ofn, sizeof(ofn));
 	char szFile[260];       // buffer for file name
+
 	HWND hwndsave;
 
 	// create the save as window
@@ -250,18 +240,10 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 
 	GetSaveFileName(&ofn);
 
-	std::string fname = ofn.lpstrFile;
-	std::size_t pos = fname.find(".");
-	std::string lightname = fname.substr(0,pos) + "_Stripe.txt";
-	std::string darkname = fname.substr(0, pos) + "_Dark.txt";
-	const char * lightfname = lightname.c_str();
-	const char * darkfname = darkname.c_str();
-
 	//Create a file to store the offset position at each point in time
 	FILE *str;
-	fopen_s(&str, lightfname, "w");
-	FILE *strdark;
-	fopen_s(&strdark, darkfname, "w");
+	fopen_s(&str, ofn.lpstrFile, "w");
+
 
 	// Print local time as a string.
 	char s[30];
@@ -272,7 +254,6 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 	localtime_s(&tim, &now);
 	i = strftime(s, 30, "%b %d, %Y; %H:%M:%S\n", &tim);
 	fprintf(str, "Current date and time: %s\n", s);
-	fprintf(strdark, "Current date and time: %s\n", s);
 
 
 	float dx0Now = 0.0f;
@@ -280,6 +261,12 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 	float dy0Now = 0.0f;
 	float dy1Now = 0.0f;
 	InitOffset();
+
+	int cw = 1; // Move the open loop stripe in a clockwise direction
+	int ccw = -1; // Move the open loop stripe in a counterclockwise direction
+	int olsdir; // Direction of the open loop stripe
+	int randomreset = 1;
+
 
 	// The main loop
 	while (!quit)
@@ -298,78 +285,78 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		QueryPerformanceCounter(&li);
 		float netTime = (li.QuadPart - CounterStart) / PCFreq;
 
-		if ((netTime > 0 && netTime < 5 * 60) || (netTime > 10 * 60 && netTime < 15 * 60) || (netTime > 20 * 60 && netTime < 25 * 60))
+		if (netTime > 0 && netTime < 5 * 60)
 		{
-			wglMakeCurrent(hdc1, hglrc);
-			RenderFrame(0);
-			SwapBuffers(hdc1);
-			wglMakeCurrent(hdc2, hglrc);
-			RenderFrame(1);
-			SwapBuffers(hdc2);
-			wglMakeCurrent(hdc3, hglrc);
-			RenderFrame(2);
-			SwapBuffers(hdc3);
+			closed = 0;
+			olsdir = cw;
+		}
+		if (netTime > 5 * 60 && netTime < 10 * 60)
+		{
+			closed = 0;
+			olsdir = ccw;
+		}
+		if (netTime > 10 * 60 && netTime < 15 * 60)
+		{
+			closed = 1;
+			if (randomreset)
+			{
+				//Generate a random starting offset
+				srand(time(0));
+				io_mutex.lock();
+				BallOffset = fmod(rand(), 240) - 120.0f;
+				io_mutex.unlock();
+				randomreset = 0;
+			}
+		}
+		if (netTime > 15 * 60 && netTime < 20 * 60)
+		{
+			closed = 1;
+			olsdir = 0;
+		}
+		if (netTime > 20 * 60)
+			break;
 
-			// Timestamp closed loop output in order to recreate later
-			QueryPerformanceCounter(&li);
-			netTime = (li.QuadPart - CounterStart) / PCFreq;
+		//Switch contexts and draw
+		wglMakeCurrent(hdc1, hglrc);
+		RenderFrame(0, olsdir);
+		wglMakeCurrent(hdc2, hglrc);
+		RenderFrame(1, olsdir);
+		wglMakeCurrent(hdc3, hglrc);
+		RenderFrame(2, olsdir);
 
-			io_mutex.lock();
+		//Swapbuffers
+		SwapBuffers(hdc1);
+		SwapBuffers(hdc2);
+		SwapBuffers(hdc3);
+
+
+		QueryPerformanceCounter(&li);
+		netTime = (li.QuadPart - CounterStart) / PCFreq;
+
+		io_mutex.lock();
+			if (closed)
+				BallOffsetNow = BallOffset;
 			dx0Now = dx0;
 			dx1Now = dx1;
 			dy0Now = dy0;
 			dy1Now = dy1;
-			io_mutex.unlock();
+		io_mutex.unlock();
 
-			//Print the elapsed time
-			fprintf(str, "Elapsed time:\t%f\t", netTime);
-			//Print the offset to the log file
-			fprintf(str, "Offset:\t%f\t", BallOffsetNow);
-			fprintf(str, "dx0:\t%f\t", dx0Now);
-			fprintf(str, "dx1:\t%f\t", dx1Now);
-			fprintf(str, "dy0:\t%f\t", dy0Now);
-			fprintf(str, "dy1:\t%f\n", dy1Now);
-		}
-		else
-		{
-			wglMakeCurrent(hdc1, hglrc);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			SwapBuffers(hdc1);
-			wglMakeCurrent(hdc2, hglrc);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			SwapBuffers(hdc2);
-			wglMakeCurrent(hdc3, hglrc);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			SwapBuffers(hdc3);
-
-			// Timestamp closed loop output in order to recreate later
-			QueryPerformanceCounter(&li);
-			netTime = (li.QuadPart - CounterStart) / PCFreq;
-
-			io_mutex.lock();
-			BallOffsetNow = BallOffset;
-			dx0Now = dx0;
-			dx1Now = dx1;
-			dy0Now = dy0;
-			dy1Now = dy1;
-			io_mutex.unlock();
-
-			//Print the elapsed time
-			fprintf(strdark, "Elapsed time:\t%f\t", netTime);
-			//Print the offset to the log file
-			fprintf(strdark, "Offset:\t%f\t", BallOffsetNow);
-			fprintf(strdark, "dx0:\t%f\t", dx0Now);
-			fprintf(strdark, "dx1:\t%f\t", dx1Now);
-			fprintf(strdark, "dy0:\t%f\t", dy0Now);
-			fprintf(strdark, "dy1:\t%f\n", dy1Now);
-		}
-		
+		//Print the elapsed time
+		fprintf(str, "Elapsed time:\t%f\t", netTime);
+		//Print the offset to the log file
+		fprintf(str, "Offset:\t%f\t", BallOffsetNow);
+		fprintf(str, "dx0:\t%f\t", dx0Now);
+		fprintf(str, "dx1:\t%f\t", dx1Now);
+		fprintf(str, "dy0:\t%f\t", dy0Now);
+		fprintf(str, "dy1:\t%f\t", dy1Now);
+		fprintf(str, "closed:\t%d\t", closed);
+		fprintf(str, "olsdir:\t%d\n", olsdir);
 
 		if (GetAsyncKeyState(VK_ESCAPE) || (netTime > 30 * 60))
 			SysShutdown();
 	}
 	GLShutdown();
 	fclose(str);
-	fclose(strdark);
 	return msg.lParam;
 }
