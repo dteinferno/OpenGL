@@ -9,7 +9,10 @@ __int64 CounterStart;
 
 // FOR CLOSED LOOP STRIPE - store the offsets
 boost::mutex io_mutex;
-float BallOffset = 0.0f;
+float BallOffsetRot = 0.0f;
+float BallOffsetFor = 0.0f;
+float BallOffsetSide = 0.0f;
+float BoundaryStopCorrection = 0.0f;
 float dx0 = 0.0f;
 float dx1 = 0.0f;
 float dy0 = 0.0f;
@@ -111,7 +114,7 @@ void TreadMillStart()
 void TreadMillDat()
 {
 	//Set the calibration factor
-	float calibfact = 15;
+	float calibfact = 4;
 
 	//Camera Data Bins
 	int dx[2], dy[2];
@@ -141,11 +144,19 @@ void TreadMillDat()
 
 		//Update the offset given the ball movement
 		io_mutex.lock();
-		BallOffset += (float)(dx[0] + dx[1]) / calibfact;
-		dx0 += dx[0];
-		dx1 += dx[1];
-		dy0 += dy[0];
-		dy1 += dy[1];
+		BallOffsetRot += (float)(dx[0] + dx[1]) / calibfact;
+		BallOffsetFor += -(float)(dy[0] + dy[1])*sqrt(2) / 2 / calibfact;
+		BallOffsetSide += -(float)(dy[0] - dy[1])*sqrt(2) / 2 / calibfact;
+		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(dist2stripe, 2))
+		{
+			BoundaryStopCorrection = pow(dist2stripe, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
+			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
+			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
+		}
+		dx0 += (float) dx[0];
+		dx1 += (float) dx[1];
+		dy0 += (float) dy[0];
+		dy1 += (float) dy[1];
 
 		io_mutex.unlock();
 	}

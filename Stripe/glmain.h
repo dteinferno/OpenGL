@@ -35,7 +35,11 @@ GLEW has been tested on a variety of operating systems, including Windows, Linux
 // To switch between open and closed loop
 extern int closed;
 
-extern float BallOffsetNow;
+extern float dist2stripe;
+
+extern float BallOffsetRotNow;
+extern float BallOffsetForNow;
+extern float BallOffsetSideNow;
 
 void InitOpenGL(void);
 

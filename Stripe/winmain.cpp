@@ -20,6 +20,7 @@ Adapted from:
 #include "winmain.h"
 #include "system.h"
 #include "balloffset.h"
+#include "wglext.h"
 
 /*
 #include "winmain.h"
@@ -267,6 +268,12 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 	int olsdir; // Direction of the open loop stripe
 	int randomreset = 1;
 
+	PFNWGLSWAPINTERVALEXTPROC       wglSwapIntervalEXT = NULL;
+	PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT = NULL;
+	wglSwapIntervalEXT =
+		(PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+	wglGetSwapIntervalEXT =
+		(PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
 
 	// The main loop
 	while (!quit)
@@ -285,35 +292,36 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		QueryPerformanceCounter(&li);
 		float netTime = (li.QuadPart - CounterStart) / PCFreq;
 
-		if (netTime > 0 && netTime < 5 * 60)
-		{
-			closed = 0;
-			olsdir = cw;
-		}
-		if (netTime > 5 * 60 && netTime < 10 * 60)
-		{
-			closed = 0;
-			olsdir = ccw;
-		}
-		if (netTime > 10 * 60 && netTime < 15 * 60)
+		if (netTime > 0 * 60 && netTime < 5 * 60)
 		{
 			closed = 1;
+			olsdir = 1;
 			if (randomreset)
 			{
 				//Generate a random starting offset
 				srand(time(0));
 				io_mutex.lock();
-				BallOffset = fmod(rand(), 240) - 120.0f;
+				BallOffsetRot = fmod(rand(), 240) - 120.0f;
 				io_mutex.unlock();
 				randomreset = 0;
 			}
 		}
-		if (netTime > 15 * 60 && netTime < 20 * 60)
+		if (netTime > 5 * 60 && netTime < 7 * 60)
+		{
+			closed = 0;
+			olsdir = cw;
+		}
+		if (netTime > 7 * 60 && netTime < 9 * 60)
+		{
+			closed = 0;
+			olsdir = ccw;
+		}
+		if (netTime > 9 * 60 && netTime < 11 * 60)
 		{
 			closed = 1;
 			olsdir = 0;
 		}
-		if (netTime > 20 * 60)
+		if (netTime > 11 * 60)
 			break;
 
 		//Switch contexts and draw
@@ -325,8 +333,10 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		RenderFrame(2, olsdir);
 
 		//Swapbuffers
+		wglSwapIntervalEXT(1);
 		SwapBuffers(hdc1);
 		SwapBuffers(hdc2);
+		//wglSwapIntervalEXT(1);
 		SwapBuffers(hdc3);
 
 
@@ -335,7 +345,9 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 
 		io_mutex.lock();
 			if (closed)
-				BallOffsetNow = BallOffset;
+				BallOffsetRotNow = BallOffsetRot;
+				BallOffsetForNow = BallOffsetFor;
+				BallOffsetSideNow = BallOffsetSide;
 			dx0Now = dx0;
 			dx1Now = dx1;
 			dy0Now = dy0;
@@ -345,7 +357,9 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		//Print the elapsed time
 		fprintf(str, "Elapsed time:\t%f\t", netTime);
 		//Print the offset to the log file
-		fprintf(str, "Offset:\t%f\t", BallOffsetNow);
+		fprintf(str, "Rotational Offset:\t%f\t", BallOffsetRotNow);
+		fprintf(str, "Forward Offset:\t%f\t", BallOffsetForNow);
+		fprintf(str, "Lateral Offset:\t%f\t", BallOffsetSideNow);
 		fprintf(str, "dx0:\t%f\t", dx0Now);
 		fprintf(str, "dx1:\t%f\t", dx1Now);
 		fprintf(str, "dy0:\t%f\t", dy0Now);

@@ -9,7 +9,9 @@ float dist2stripe = 8;
 float fovAng = 80 * M_PI / 180;
 
 // Define offset values
-float BallOffsetNow = 0.0f;
+float BallOffsetRotNow = 0.0f;
+float BallOffsetForNow = 0.0f;
+float BallOffsetSideNow = 0.0f;
 
 // Vertex shader which passes through the texture and position coordinates
 const char* vertex_shader =
@@ -53,6 +55,8 @@ const char* fragment_shader =
 
 "  float distorts = 0.5*(1+ tan(angofScreen*(distortsinit - 0.5))/tan(0.5*angofScreen));"
 "  float distortt = 0.5 + (distorttinit - 0.5) * cos(0.5 * angofScreen)/cos(angofScreen*(distorts-0.5));"
+
+"  distortt = distorttinit;"
 
 "  float brightcorrect = 1.243*pow(distorts,4)-1.328*pow(distorts,3) + 0.8553*pow(distorts,2)-0.3047*distorts+0.5221;"
 
@@ -129,11 +133,17 @@ void InitOpenGL(void)
 		0.8f, 0.0f, -40.0f, 1.0f, 0.0f, 1.0f,
 		0.8f, 0.0f, 40.0f, 1.0f, 0.0f, 0.0f,
 
-		// Second set of points in for the final display that the texture will be mapped onto.
+		// Second set of points for the final display that the texture will be mapped onto.
 		-windowSpan, 0, -windowSpan / aspect, 1.0f, 1.0f, 1.0f,
 		-windowSpan, 0, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
 		windowSpan, 0, -windowSpan / aspect, 1.0f, 0.0f, 1.0f,
-		windowSpan, 0, windowSpan / aspect, 1.0f, 0.0f, 0.0f
+		windowSpan, 0, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
+
+		// Third set of points for a blinking dot that will trigger the photodiode.
+		0.8*windowSpan, 0, 0.9*windowSpan / aspect, 1.0f, 1.0f, 1.0f,
+		0.8*windowSpan, 0, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
+		windowSpan, 0, 0.9*windowSpan / aspect, 1.0f, 0.0f, 1.0f,
+		windowSpan, 0, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
 	};
 
 	// Bind the vertex data to the buffer array
@@ -151,6 +161,9 @@ void InitOpenGL(void)
 
 		4, 5, 6,
 		5, 6, 7,
+
+		8, 9, 10,
+		9, 10, 11,
 	};
 
 	//Bind the element data to the array.
@@ -183,8 +196,8 @@ void InitOpenGL(void)
 	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(4 * sizeof(GLfloat)));
 
 	// Create a texture array
-	tex = new GLuint[6];
-	glGenTextures(6, tex);
+	tex = new GLuint[7];
+	glGenTextures(7, tex);
 
 	// Make the first texture red
 	glBindTexture(GL_TEXTURE_2D, tex[0]);
@@ -228,6 +241,16 @@ void InitOpenGL(void)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 
+	// Make the final texture white (for the photodiode)
+	glBindTexture(GL_TEXTURE_2D, tex[6]);
+	float pixelsW[] = {
+		1.0f, 1.0f, 1.0f,
+	};
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_FLOAT, pixelsW);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	// Pull out the cylindrical distortion switch uniform from the shader
 	cylLocation = glGetUniformLocation(shader_program, "cyl");
@@ -262,15 +285,19 @@ void RenderFrame(int windowNum, int direction)
 		{
 			//Advance the stripe according to the ball offset
 			io_mutex.lock();
-			BallOffsetNow = BallOffset;
+			BallOffsetRotNow = BallOffsetRot;
+			BallOffsetForNow = BallOffsetFor;
+			BallOffsetSideNow = BallOffsetSide;
 			io_mutex.unlock();
 		}
 		else
 		{
 			//Advance the stripe over time - FOR OPEN LOOP
-			TimeOffset(BallOffsetNow, direction, CounterStart);
+			TimeOffset(BallOffsetRotNow, direction, CounterStart);
 		}
-		ModelMatrix = glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetNow  * M_PI / 180)), 0.0f)) * glm::rotate(identity, BallOffsetNow, glm::vec3(0.0f, 0.0f, 1.0f));
+		ModelMatrix = glm::translate(identity, glm::vec3(BallOffsetForNow, BallOffsetSideNow,0.0f)) * 
+			glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetRotNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetRotNow  * M_PI / 180)), 0.0f)) * 
+			glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f));
 		glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		// Capture the stripe as a texture, distort it for the cylindrical screen using the shader, and map it back onto a rectangle.
@@ -298,6 +325,12 @@ void RenderFrame(int windowNum, int direction)
 
 	if (direction == 0)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	if (windowNum == 2)
+	{
+		glBindTexture(GL_TEXTURE_2D, tex[6]);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(GLfloat)));
+	}
 
 }
 

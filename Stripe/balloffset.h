@@ -12,7 +12,9 @@ extern float PCFreq;
 
 //Declare global variables to lock (mutex) and store the net offset (for closed loop)
 extern boost::mutex io_mutex;
-extern float BallOffset;
+extern float BallOffsetRot;
+extern float BallOffsetFor;
+extern float BallOffsetSide;
 extern float dx0;
 extern float dx1;
 extern float dy0;
