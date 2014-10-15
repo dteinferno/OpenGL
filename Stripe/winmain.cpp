@@ -1,13 +1,16 @@
+////////////////////////////////////////////////////////////////////////////////////
+//       Main routine for OpenGl Open Loop and Closed Loop Visual Stimuli         //
+////////////////////////////////////////////////////////////////////////////////////
+//                           Dan Turner-Evans                                     //
+//                          V0.0 - 10/15/2014                                     //
+////////////////////////////////////////////////////////////////////////////////////
+// winmain - create the windows and run the main loop                             //
+// balloffset - programs to calculate the offset of the stripe for                //
+//    open and closed loop stripes                                                //
+// glmain - contains the OpenGl rendering code                                    //
+// system - system shutdown                                                       //
+////////////////////////////////////////////////////////////////////////////////////
 /*
-Main routine for OpenGl open and closed loop stripes
-Dan Turner-Evans
-08/20/14
-
-winmain - create the windows and run the main loop
-balloffset - programs to calculate the offset of the stripe for open and closed loop stripes
-glmain - contains the OpenGl rendering code
-system - system shutdown
-
 Adapted from:
 	www.thepixels.net
 	by:    Greg Damon
@@ -22,21 +25,12 @@ Adapted from:
 #include "balloffset.h"
 #include "wglext.h"
 
-/*
-#include "winmain.h"
-#include "system.h"
-*/
-
 // Open loop or closed loop
 int closed;
 
 // Create device contexts and window handles for three windows
 HDC hdc1;
-HDC hdc2;
-HDC hdc3;
 HWND hwnd1;
-HWND hwnd2;
-HWND hwnd3;
 
 // Create OpenGl context
 HGLRC hglrc;
@@ -47,39 +41,29 @@ bool quit = false;
 // Initialize the pixel format index
 int indexPixelFormat = 0;
 
-// CreateWnd: creates three full-screen windows, one on each projector
+// CreateWnd: creates a full screen window to span the projectors
 void CreateWnd(HINSTANCE &hinst, int width, int height, int depth)
 {
-	// Find the projectors
-	POINT pt1, pt2, pt3;
-	pt1.x = -SCRWIDTH / 2;
-	pt2.x = -3 * SCRWIDTH / 2;
-	pt3.x = -5 * SCRWIDTH / 2;
-	pt1.y = pt2.y = pt3.y = 100;
+	// Find the middle projector
+	POINT pt;
+	pt.x = - SCRWIDTH;
+	pt.y = 100;
 
-	HMONITOR hmon1, hmon2, hmon3; // monitor handles
-	hmon1 = MonitorFromPoint(pt1, MONITOR_DEFAULTTONEAREST);
-	hmon2 = MonitorFromPoint(pt2, MONITOR_DEFAULTTONEAREST);
-	hmon3 = MonitorFromPoint(pt3, MONITOR_DEFAULTTONEAREST);
+	HMONITOR hmon; // monitor handles
+	hmon = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
 
-	MONITORINFO mi1, mi2, mi3;
-	mi1.cbSize = mi2.cbSize = mi3.cbSize = sizeof(MONITORINFO);
-	GetMonitorInfo(hmon1, &mi1);
-	GetMonitorInfo(hmon2, &mi2);
-	GetMonitorInfo(hmon3, &mi3);
+	MONITORINFO mi;
+	mi.cbSize = sizeof(MONITORINFO);
+	GetMonitorInfo(hmon, &mi);
 
 	// Set the window position based on the projector locations
-	int posx1 = mi1.rcMonitor.left;
-	int posy1 = mi1.rcMonitor.top;
-	int posx2 = mi2.rcMonitor.left;
-	int posy2 = mi2.rcMonitor.top;
-	int posx3 = mi3.rcMonitor.left;
-	int posy3 = mi3.rcMonitor.top;
+	int posx1 = mi.rcMonitor.left;
+	int posy1 = mi.rcMonitor.top;
 
 	// Constants for fullscreen mode
 	long wndStyle = WS_POPUP | WS_VISIBLE;
 
-	// create the windows
+	// create the window
 	hwnd1 = CreateWindowEx(NULL,
 		WNDCLASSNAME,
 		WNDNAME,
@@ -115,44 +99,6 @@ void CreateWnd(HINSTANCE &hinst, int width, int height, int depth)
 	InitOpenGL();
 	ShowWindow(hwnd1, SW_SHOW);		// everything went OK, show the window
 	UpdateWindow(hwnd1);
-
-	hwnd2 = CreateWindowEx(NULL,
-		WNDCLASSNAME,
-		WNDNAME,
-		wndStyle | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
-		posx2, posy2,
-		width, height,
-		NULL,
-		NULL,
-		hinst,
-		NULL);
-
-	hdc2 = GetDC(hwnd2);
-	indexPixelFormat = ChoosePixelFormat(hdc2, &pfd);
-	SetPixelFormat(hdc2, indexPixelFormat, &pfd);
-	wglMakeCurrent(hdc2, hglrc);
-	glewInit();
-	ShowWindow(hwnd2, SW_SHOW);		// everything went OK, show the window
-	UpdateWindow(hwnd2);
-
-	hwnd3 = CreateWindowEx(NULL,
-		WNDCLASSNAME,
-		WNDNAME,
-		wndStyle | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
-		posx3, posy3,
-		width, height,
-		NULL,
-		NULL,
-		hinst,
-		NULL);
-
-	hdc3 = GetDC(hwnd3);
-	indexPixelFormat = ChoosePixelFormat(hdc3, &pfd);
-	SetPixelFormat(hdc3, indexPixelFormat, &pfd);
-	wglMakeCurrent(hdc3, hglrc);
-	glewInit();
-	ShowWindow(hwnd3, SW_SHOW);		// everything went OK, show the window
-	UpdateWindow(hwnd3);
 }
 
 // The event handler
@@ -292,6 +238,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		QueryPerformanceCounter(&li);
 		float netTime = (li.QuadPart - CounterStart) / PCFreq;
 
+/////////////////////// EXPERIMENT SPECIFICS LIVE HERE /////////////////////////////
 		if (netTime > 0 * 60 && netTime < 5 * 60)
 		{
 			closed = 1;
@@ -323,26 +270,20 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		}
 		if (netTime > 11 * 60)
 			break;
+////////////////////////////////////////////////////////////////////////////////////
 
 		//Switch contexts and draw
 		wglMakeCurrent(hdc1, hglrc);
-		RenderFrame(0, olsdir);
-		wglMakeCurrent(hdc2, hglrc);
-		RenderFrame(1, olsdir);
-		wglMakeCurrent(hdc3, hglrc);
-		RenderFrame(2, olsdir);
+		RenderFrame(olsdir);
 
 		//Swapbuffers
-		wglSwapIntervalEXT(1);
 		SwapBuffers(hdc1);
-		SwapBuffers(hdc2);
-		//wglSwapIntervalEXT(1);
-		SwapBuffers(hdc3);
 
-
+		// Note the time that's passed
 		QueryPerformanceCounter(&li);
 		netTime = (li.QuadPart - CounterStart) / PCFreq;
 
+		// Pull out the relevant values
 		io_mutex.lock();
 			if (closed)
 				BallOffsetRotNow = BallOffsetRot;

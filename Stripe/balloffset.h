@@ -1,3 +1,10 @@
+////////////////////////////////////////////////////////////////////////////////////
+//                   Header for Finding the Ball Offset                           //
+////////////////////////////////////////////////////////////////////////////////////
+//                           Dan Turner-Evans                                     //
+//                          V0.0 - 10/15/2014                                     //
+////////////////////////////////////////////////////////////////////////////////////
+
 // Header for interfacing with the treadmill
 #include "ftd2xx.h"
 
@@ -20,12 +27,17 @@ extern float dx1;
 extern float dy0;
 extern float dy1;
 
+// Start the counter and set up the treadmill
 void InitOffset(void);
 
+// Calculate offsets for open loop
 void TimeOffset(float &tOffset, int dir, time_t start);
 
+// Start the treadmill
 void TreadMillStart(void);
 
+// Treadmill data server
 void TreadMillDat(void);
 
+// Stop collecting the offset
 void CloseOffset(void);

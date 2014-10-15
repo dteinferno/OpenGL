@@ -1,3 +1,10 @@
+////////////////////////////////////////////////////////////////////////////////////
+//                 Main Routine for Drawing Objects via OpenGL                    //
+////////////////////////////////////////////////////////////////////////////////////
+//                           Dan Turner-Evans                                     //
+//                          V0.0 - 10/15/2014                                     //
+////////////////////////////////////////////////////////////////////////////////////
+
 #include "glmain.h"
 #include <windows.h>
 #include "winmain.h"
@@ -8,7 +15,7 @@
 float dist2stripe = 8;
 float fovAng = 80 * M_PI / 180;
 
-// Define offset values
+// Define offset values (Rotational, Forward, and Lateral)
 float BallOffsetRotNow = 0.0f;
 float BallOffsetForNow = 0.0f;
 float BallOffsetSideNow = 0.0f;
@@ -46,7 +53,12 @@ const char* fragment_shader =
 
 "  float angofScreen = 4*3.141592/9;"
 
-"  float texshifts = wofScreen*(Texcoord.s-0.5);"
+"  float texshifts = wofScreen*(3*Texcoord.s-1.5);"
+" if (Texcoord.s < 0.3333)"
+"  texshifts = wofScreen*(3*Texcoord.s-0.5);"
+" if (Texcoord.s > 0.6666)"
+"  texshifts = wofScreen*(3*Texcoord.s-2.5);"
+
 "  float texshiftt = Texcoord.t-0.5;"
 "  float modtfactor = (1.5 - sqrt(1.5*1.5-texshifts*texshifts))/LtoScreen + 1.0;"
 "  float distorttinit = texshiftt*modtfactor + 0.5;"
@@ -67,21 +79,17 @@ const char* fragment_shader =
 "   brightcorrect = 1;"
 "  }"
 
-" float projcorrect = 0.0;"
+" float projcorrect = projnorm/proj1power;"
+" if (Texcoord.s < 0.3333)"
+"  projcorrect = projnorm/proj0power;"
+" if (Texcoord.s > 0.6666)"
+"  projcorrect = projnorm/proj2power;"
+
 " if (projnum == 100)"
 " {"
 "  projcorrect = 1.0;"
 " }"
-" if (projnum == 0)"
-" {"
-"  projcorrect = projnorm/proj0power;"
-" }"" if (projnum == 1)"
-" {"
-"  projcorrect = projnorm/proj1power;"
-" }"" if (projnum == 2)"
-" {"
-"  projcorrect = projnorm/proj2power;"
-" }"
+
 "  vec2 distort = vec2 (distorts, distortt);"
 "  vec4 unmodColor = texture(tex, distort);"
 "  frag_colour = projcorrect*brightcorrect*vec4(unmodColor.r*1.0, unmodColor.g*1.0, unmodColor.b*1.0, 1.0 );"
@@ -103,7 +111,7 @@ GLuint ViewID;
 glm::mat4 ModelMatrix;
 GLuint ModelID;
 
-// InitOpenGL: initializes OpenGL; resize projection and other setup
+// InitOpenGL: initializes OpenGL; defines buffers, constants, etc...
 void InitOpenGL(void)
 {
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -121,7 +129,7 @@ void InitOpenGL(void)
 	glGenBuffers(1, &vbo);
 
 	// Define constants for defining the shapes
-	float windowSpan = dist2stripe * tanf(fovAng / 2);
+	float windowSpan =  dist2stripe * tanf(fovAng / 2);
 	float aspect = float(SCRWIDTH) / float(SCRHEIGHT);
 
 	// Define the vertices
@@ -140,9 +148,9 @@ void InitOpenGL(void)
 		windowSpan, 0, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
 
 		// Third set of points for a blinking dot that will trigger the photodiode.
-		0.8*windowSpan, 0, 0.9*windowSpan / aspect, 1.0f, 1.0f, 1.0f,
-		0.8*windowSpan, 0, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
-		windowSpan, 0, 0.9*windowSpan / aspect, 1.0f, 0.0f, 1.0f,
+		0.95*windowSpan, 0, windowSpan * ( 1 / aspect - 0.05), 1.0f, 1.0f, 1.0f,
+		0.95*windowSpan, 0, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
+		windowSpan, 0, windowSpan * (1 / aspect - 0.05), 1.0f, 0.0f, 1.0f,
 		windowSpan, 0, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
 	};
 
@@ -263,77 +271,99 @@ void InitOpenGL(void)
 	ViewID = glGetUniformLocation(shader_program, "View");
 	ModelID = glGetUniformLocation(shader_program, "Model");
 
-	glViewport(0, 0, SCRWIDTH, SCRHEIGHT);
 }
 
-void RenderFrame(int windowNum, int direction)
+void RenderFrame(int direction)
 {
 	glm::mat4 identity;
-	ProjectionMatrix = glm::perspective(float(360 / M_PI * atanf(tanf(fovAng / 2) * float(SCRHEIGHT) / float(SCRWIDTH))), float(SCRWIDTH) / float(SCRHEIGHT), 0.1f, 1000.0f);
-	ViewMatrix = glm::lookAt(glm::vec3(0, dist2stripe, 0), glm::vec3((windowNum - 1) * dist2stripe*tanf(fovAng), 0, 0), glm::vec3(0, 0, 1)); //
-	glUniformMatrix4fv(ProjectionID, 1, false, glm::value_ptr(ProjectionMatrix));
-	glUniformMatrix4fv(ViewID, 1, false, glm::value_ptr(ViewMatrix));
 
-	glUniform1f(cylLocation, (float) 0.0f); // Initially, we want an undistorted projection
-	glUniform1f(ProjNumber, (int) 100);  // No brightness correction the first time
-
+	// Map the desired image onto the three different colors
 	for (int n = 0; n < 3; n++) {
+
+		//Clear the image and bind the appropriate color texture
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);  // Set the background color to black
 		glBindTexture(GL_TEXTURE_2D, tex[n]); // Bind the appropriate color texture
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear the buffers
-		if (closed)
-		{
-			//Advance the stripe according to the ball offset
-			io_mutex.lock();
-			BallOffsetRotNow = BallOffsetRot;
-			BallOffsetForNow = BallOffsetFor;
-			BallOffsetSideNow = BallOffsetSide;
-			io_mutex.unlock();
+
+		glUniform1f(cylLocation, (float) 0.0f); // Initially, we want an undistorted projection
+		glUniform1f(ProjNumber, (int)100);  // No brightness correction the first time
+
+		// Take a picture for each of the three camera angles
+		for (int windowNum = 0; windowNum < 3; windowNum++) {
+
+			// Define the scene to be captured
+			glViewport(SCRWIDTH*windowNum / 3, 0, SCRWIDTH / 3, SCRHEIGHT); // Restrict the viewport to the region of interest
+			ProjectionMatrix = glm::perspective(float(360 / M_PI * atanf(tanf(fovAng / 2) * float(SCRHEIGHT) / float(SCRWIDTH))), float(SCRWIDTH) / float(SCRHEIGHT), 0.1f, 1000.0f); //Set the perspective for the projector
+			ViewMatrix = glm::lookAt(glm::vec3(0, dist2stripe, 0), glm::vec3(-(windowNum - 1) * dist2stripe*tanf(fovAng), 0, 0), glm::vec3(0, 0, 1)); //Look at the appropriate direction for the projector
+			glUniformMatrix4fv(ProjectionID, 1, false, glm::value_ptr(ProjectionMatrix));
+			glUniformMatrix4fv(ViewID, 1, false, glm::value_ptr(ViewMatrix));
+
+			if (closed) // Advance the environment according to the ball movement
+			{
+				io_mutex.lock();
+				BallOffsetRotNow = BallOffsetRot;
+				BallOffsetForNow = BallOffsetFor;
+				BallOffsetSideNow = BallOffsetSide;
+				io_mutex.unlock();
+			}
+			else  // Advance the environment according to open loop parameters
+			{
+				TimeOffset(BallOffsetRotNow, direction, CounterStart);
+				BallOffsetForNow = 0.0f;
+				BallOffsetSideNow = 0.0f;
+			}
+
+			// Apply the movement
+			ModelMatrix = glm::translate(identity, glm::vec3(BallOffsetForNow, BallOffsetSideNow, 0.0f)) *
+				glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetRotNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetRotNow  * M_PI / 180)), 0.0f)) *
+				glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f));
+			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
+
+			// Draw the shapes
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		}
-		else
-		{
-			//Advance the stripe over time - FOR OPEN LOOP
-			TimeOffset(BallOffsetRotNow, direction, CounterStart);
-		}
-		ModelMatrix = glm::translate(identity, glm::vec3(BallOffsetForNow, BallOffsetSideNow,0.0f)) * 
-			glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetRotNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetRotNow  * M_PI / 180)), 0.0f)) * 
-			glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f));
-		glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		// Capture the stripe as a texture, distort it for the cylindrical screen using the shader, and map it back onto a rectangle.
+		// Capture the stripe as a texture
 		glBindTexture(GL_TEXTURE_2D, tex[3 + n]);
 		glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, SCRWIDTH, SCRHEIGHT, 0);
 	}
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_ONE, GL_ONE);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glUniform1f(cylLocation, (float) 1.0f);
-	if (windowNum > 0){
-		ModelMatrix = glm::translate(identity, glm::vec3(dist2stripe*sinf(fovAng * (windowNum - 1)), dist2stripe*(1.0f - cosf(fovAng * (windowNum - 1))), 0.0f)) * glm::rotate(identity, (float)(fovAng * 180 / M_PI * (windowNum - 1)), glm::vec3(0.0f, 0.0f, 1.0f));
-	}
-	else{
-		ModelMatrix = glm::translate(identity, glm::vec3(dist2stripe*sinf(2 * M_PI - fovAng), dist2stripe*(1.0f - cosf(2 * M_PI - fovAng)), 0.0f)) * glm::rotate(identity, (float)(360 - fovAng * 180 / M_PI), glm::vec3(0.0f, 0.0f, 1.0f));
-	}
-	glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
-	glUniform1f(ProjNumber, (int) windowNum);  // Correct for the brightness difference between projectors
 
-	for (int n = 0; n < 3; n++) {
-		glBindTexture(GL_TEXTURE_2D, tex[3 + n]);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(GLfloat)));
+	// Map the textures onto a rectangle/window that spans all three projectors and apply the appropriate shader distortion corrections
+	{
+		// Allow the different colors/textures to be blended
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+
+		// Clear the screen and apply
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		//
+		glUniform1f(cylLocation, (float) 1.0f); // Allow the projection to be distorted for the cylindrical screen using the shader
+		glViewport(0, 0, SCRWIDTH, SCRHEIGHT); // Open up the viewport to the full screen
+		ViewMatrix = glm::lookAt(glm::vec3(0, dist2stripe, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)); //Look at the center of the rectangle
+		glUniformMatrix4fv(ViewID, 1, false, glm::value_ptr(ViewMatrix));
+		glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(identity));
+		glUniform1f(ProjNumber, 1);  // Correct for the brightness difference between projectors
+
+		// Draw the rectangle
+		for (int n = 0; n < 3; n++) {
+			glBindTexture(GL_TEXTURE_2D, tex[3 + n]);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(GLfloat)));
+		}
+
 	}
 
 	if (direction == 0)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	if (windowNum == 2)
-	{
+	// Draw a box to trigger the photodiode
 		glBindTexture(GL_TEXTURE_2D, tex[6]);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(GLfloat)));
-	}
 
 }
 
+
+// Clear the buffers on shutdown
 void GLShutdown(void)
 {
 	glDeleteTextures(1, tex);

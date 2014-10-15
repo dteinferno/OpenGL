@@ -1,12 +1,14 @@
-/*
-Header for main routine
-08/20/14
-*/
+////////////////////////////////////////////////////////////////////////////////////
+//                          Header for WinMain                                    //
+////////////////////////////////////////////////////////////////////////////////////
+//                           Dan Turner-Evans                                     //
+//                          V0.0 - 10/15/2014                                     //
+////////////////////////////////////////////////////////////////////////////////////
 
 #include <string>
 
 // Define the projector dimensions
-#define SCRWIDTH 720
+#define SCRWIDTH 720*3
 #define SCRHEIGHT 1280
 #define SCRDEPTH 32
 
@@ -14,13 +16,9 @@ Header for main routine
 #define WNDCLASSNAME "GLClass"
 #define WNDNAME "Stripe"
 
-// Define handles for the three windows, one for each projector
+// Define a handle and device context for the window
 extern HDC hdc1; //HDC = handle device context
-extern HDC hdc2;
-extern HDC hdc3;
 extern HWND hwnd1; //HWND = window handle
-extern HWND hwnd2;
-extern HWND hwnd3;
 
 // Define OpenGl rendering context
 extern HGLRC hglrc;

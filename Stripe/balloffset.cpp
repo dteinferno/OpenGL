@@ -1,13 +1,21 @@
+////////////////////////////////////////////////////////////////////////////////////
+//                  Main Routine for Finding the Ball Offset                      //
+////////////////////////////////////////////////////////////////////////////////////
+//                           Dan Turner-Evans                                     //
+//                          V0.0 - 10/15/2014                                     //
+////////////////////////////////////////////////////////////////////////////////////
+
 #include "glmain.h"
 #include <windows.h>
 #include "balloffset.h""
 
+// Set up a counter for the open loop object changes
 LARGE_INTEGER li;
 float PCFreq = 0;
 __int64 CounterStart;
 
 
-// FOR CLOSED LOOP STRIPE - store the offsets
+// FOR CLOSED LOOP - store the offsets
 boost::mutex io_mutex;
 float BallOffsetRot = 0.0f;
 float BallOffsetFor = 0.0f;
@@ -39,8 +47,8 @@ void InitOffset()
 
 }
 
-// FOR OPEN LOOP STRIPE
-// Set the loop duration for the stripe and calculate the offset due to time passing
+// FOR OPEN LOOP
+// Set the loop duration and calculate the offset due to time passing
 void TimeOffset(float &tOffset, int dir, __int64 start) {
 	// get delta time for this iteration:
 	QueryPerformanceCounter(&li);

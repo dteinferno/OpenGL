@@ -15,6 +15,13 @@ GLEW has been tested on a variety of operating systems, including Windows, Linux
 #include <stdio.h>
 #include <string.h>
 #include <tchar.h>
+////////////////////////////////////////////////////////////////////////////////////
+//        Header File for the Main Routine for Drawing Objects via Open           //
+////////////////////////////////////////////////////////////////////////////////////
+//                           Dan Turner-Evans                                     //
+//                          V0.0 - 10/15/2014                                     //
+////////////////////////////////////////////////////////////////////////////////////
+
 #include <time.h>
 #include <cstdio>
 #include <map>
@@ -35,14 +42,19 @@ GLEW has been tested on a variety of operating systems, including Windows, Linux
 // To switch between open and closed loop
 extern int closed;
 
+// Set the distance between the fly and the initial object of interest
 extern float dist2stripe;
 
+// Variables that hold the current ball offset
 extern float BallOffsetRotNow;
 extern float BallOffsetForNow;
 extern float BallOffsetSideNow;
 
+// Initialize the OpenGL buffers, etc...
 void InitOpenGL(void);
 
-void RenderFrame(int windowNum, int direction);
+// Draw the scene
+void RenderFrame(int direction);
 
+// Clear the buffers, delete the shaders, etc...
 void GLShutdown(void);
