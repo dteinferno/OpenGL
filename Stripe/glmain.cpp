@@ -63,10 +63,22 @@ const char* fragment_shader =
 "  float modtfactor = (1.5 - sqrt(1.5*1.5-texshifts*texshifts))/LtoScreen + 1.0;"
 "  float distorttinit = texshiftt*modtfactor + 0.5;"
 
-"  float distortsinit = 0.3881*pow(Texcoord.s,4)-0.1844*pow(Texcoord.s,3) - 0.2624*pow(Texcoord.s,2)+1.049*Texcoord.s;"
+"  float texchop = 3*Texcoord.s;"
+" if (Texcoord.s > 0.3333)"
+"  texchop = texchop - 1;"
+" if (Texcoord.s > 0.6666)"
+"  texchop = texchop - 1;"
+
+"  float distortsinit = 0.3881*pow(texchop,4)-0.1844*pow(texchop,3) - 0.2624*pow(texchop,2)+1.049*texchop;"
 
 "  float distorts = 0.5*(1+ tan(angofScreen*(distortsinit - 0.5))/tan(0.5*angofScreen));"
 "  float distortt = 0.5 + (distorttinit - 0.5) * cos(0.5 * angofScreen)/cos(angofScreen*(distorts-0.5));"
+
+"  distorts = 0.333 * distorts; "
+" if (Texcoord.s > 0.3333)"
+"  distorts = distorts + 0.333;"
+" if (Texcoord.s > 0.6666)"
+"  distorts = distorts + 0.333;"
 
 "  distortt = distorttinit;"
 
@@ -301,8 +313,8 @@ void RenderFrame(int direction)
 			if (closed) // Advance the environment according to the ball movement
 			{
 				io_mutex.lock();
-				BallOffsetRotNow = BallOffsetRot;
-				BallOffsetForNow = BallOffsetFor;
+				BallOffsetRotNow =  BallOffsetRot;
+				BallOffsetForNow =  BallOffsetFor;
 				BallOffsetSideNow = BallOffsetSide;
 				io_mutex.unlock();
 			}
@@ -314,7 +326,7 @@ void RenderFrame(int direction)
 			}
 
 			// Apply the movement
-			ModelMatrix = glm::translate(identity, glm::vec3(BallOffsetForNow, BallOffsetSideNow, 0.0f)) *
+			ModelMatrix = glm::translate(identity, glm::vec3(BallOffsetSideNow, BallOffsetForNow, 0.0f)) *
 				glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetRotNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetRotNow  * M_PI / 180)), 0.0f)) *
 				glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f));
 			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));

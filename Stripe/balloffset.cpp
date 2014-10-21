@@ -122,7 +122,10 @@ void TreadMillStart()
 void TreadMillDat()
 {
 	//Set the calibration factor
-	float calibfact = 4;
+	float Cam1RotCalibfact = 1.81;
+	float Cam2RotCalibfact = 1.36;
+	float Cam1PosCalibfact = 106;
+	float Cam2PosCalibfact = 140;
 
 	//Camera Data Bins
 	int dx[2], dy[2];
@@ -152,9 +155,9 @@ void TreadMillDat()
 
 		//Update the offset given the ball movement
 		io_mutex.lock();
-		BallOffsetRot += (float)(dx[0] + dx[1]) / calibfact;
-		BallOffsetFor += -(float)(dy[0] + dy[1])*sqrt(2) / 2 / calibfact;
-		BallOffsetSide += -(float)(dy[0] - dy[1])*sqrt(2) / 2 / calibfact;
+		BallOffsetRot += (float)((float)dx[0] / Cam1RotCalibfact + (float)dx[1] / Cam2RotCalibfact) / 2;
+		BallOffsetFor += (float)((float)dy[0] / Cam1PosCalibfact + (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
+		BallOffsetSide += (float)((float)dy[0] / Cam1PosCalibfact - (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
 		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(dist2stripe, 2))
 		{
 			BoundaryStopCorrection = pow(dist2stripe, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
