@@ -8,6 +8,7 @@
 #include "glmain.h"
 #include <windows.h>
 #include "balloffset.h""
+#include "DAQ.h"
 
 // Set up a counter for the open loop object changes
 LARGE_INTEGER li;
@@ -31,6 +32,10 @@ FT_HANDLE ftHandle;
 unsigned char wBuffer[1024];
 DWORD txBytes = 0;
 
+// To tell the DAQ when to run
+boost::mutex io_mutex2;
+int DAQRun = 1;
+
 // Initialize the offset variables and the treadmill
 void InitOffset()
 {
@@ -44,6 +49,9 @@ void InitOffset()
 	TreadMillStart();
 
 	boost::thread thrd(&TreadMillDat);
+
+	// Start the DAQ
+	boost::thread thrd2(&DAQDat);
 
 }
 
@@ -182,6 +190,11 @@ void CloseOffset()
 	wBuffer[0] = 254;
 	wBuffer[1] = 0;
 	FT_Write(ftHandle, wBuffer, 2, &txBytes);
+
+	//Stop the DAQ
+	io_mutex2.lock();
+	DAQRun = 0;
+	io_mutex2.unlock();
 
 	//Close serial interface
 	FT_Close(ftHandle);

@@ -28,6 +28,10 @@ Adapted from:
 // Open loop or closed loop
 int closed;
 
+// Filename for the synchronization file
+char* syncfname;
+char syncfnamebuf[100];
+
 // Create device contexts and window handles for three windows
 HDC hdc1;
 HWND hwnd1;
@@ -191,6 +195,10 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 	FILE *str;
 	fopen_s(&str, ofn.lpstrFile, "w");
 
+	//Set the filename for the DAQ data
+	strncpy_s(syncfnamebuf, 100, ofn.lpstrFile, strlen(ofn.lpstrFile)-4);
+	strcat_s(syncfnamebuf, 100, "_SYNC.txt");
+	syncfname = syncfnamebuf;
 
 	// Print local time as a string.
 	char s[30];
