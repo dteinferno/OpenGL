@@ -172,10 +172,10 @@ void TreadMillDat()
 			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
 			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
 		}
-		dx0 += (float) dx[0];
-		dx1 += (float) dx[1];
-		dy0 += (float) dy[0];
-		dy1 += (float) dy[1];
+		dx0 += (float)dx[0];
+		dx1 += (float)dx[1];
+		dy0 += (float)dy[0];
+		dy1 += (float)dy[1];
 
 		io_mutex.unlock();
 	}

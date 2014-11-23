@@ -12,10 +12,10 @@
 ////////////////////////////////////////////////////////////////////////////////////
 /*
 Adapted from:
-	www.thepixels.net
-	by:    Greg Damon
-	        gregd@thepixels.net
-	and segments of Jim Strother's Win API code
+www.thepixels.net
+by:    Greg Damon
+gregd@thepixels.net
+and segments of Jim Strother's Win API code
 */
 
 #include "glmain.h"
@@ -24,6 +24,7 @@ Adapted from:
 #include "system.h"
 #include "balloffset.h"
 #include "wglext.h"
+#include "DAQ.h"
 
 // Open loop or closed loop
 int closed;
@@ -50,7 +51,7 @@ void CreateWnd(HINSTANCE &hinst, int width, int height, int depth)
 {
 	// Find the middle projector
 	POINT pt;
-	pt.x = - SCRWIDTH;
+	pt.x = -SCRWIDTH;
 	pt.y = 100;
 
 	HMONITOR hmon; // monitor handles
@@ -110,21 +111,21 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg)
 	{
-		case WM_CREATE:
-		{
-			break;
-		}
-		case WM_DESTROY:
-		{
-			SysShutdown();
-			break;
-		}
-		case WM_SIZE:
-		{
-			break;
-		}
-			return DefWindowProc(hwnd, msg, wparam, lparam);
-		}
+	case WM_CREATE:
+	{
+					  break;
+	}
+	case WM_DESTROY:
+	{
+					   SysShutdown();
+					   break;
+	}
+	case WM_SIZE:
+	{
+					break;
+	}
+		return DefWindowProc(hwnd, msg, wparam, lparam);
+	}
 }
 
 // The main loop
@@ -196,7 +197,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 	fopen_s(&str, ofn.lpstrFile, "w");
 
 	//Set the filename for the DAQ data
-	strncpy_s(syncfnamebuf, 100, ofn.lpstrFile, strlen(ofn.lpstrFile)-4);
+	strncpy_s(syncfnamebuf, 100, ofn.lpstrFile, strlen(ofn.lpstrFile) - 4);
 	strcat_s(syncfnamebuf, 100, "_SYNC.txt");
 	syncfname = syncfnamebuf;
 
@@ -246,8 +247,13 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		QueryPerformanceCounter(&li);
 		float netTime = (li.QuadPart - CounterStart) / PCFreq;
 
-/////////////////////// EXPERIMENT SPECIFICS LIVE HERE /////////////////////////////
-		if (netTime > 0 * 60 && netTime < 5 * 60)
+		/////////////////////// EXPERIMENT SPECIFICS LIVE HERE /////////////////////////////
+		if (netTime < 15)
+		{
+			closed = 1;
+			olsdir = 0;
+		}
+		if (netTime > 15  && netTime < 2 * 60)
 		{
 			closed = 1;
 			olsdir = 1;
@@ -261,24 +267,14 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 				randomreset = 0;
 			}
 		}
-		if (netTime > 5 * 60 && netTime < 7 * 60)
-		{
-			closed = 0;
-			olsdir = cw;
-		}
-		if (netTime > 7 * 60 && netTime < 9 * 60)
-		{
-			closed = 0;
-			olsdir = ccw;
-		}
-		if (netTime > 9 * 60 && netTime < 11 * 60)
+		if (netTime > 2 * 60 && netTime < 3 * 60)
 		{
 			closed = 1;
 			olsdir = 0;
 		}
-		if (netTime > 11 * 60)
+		if (netTime > 3 * 60)
 			break;
-////////////////////////////////////////////////////////////////////////////////////
+		////////////////////////////////////////////////////////////////////////////////////
 
 		//Switch contexts and draw
 		wglMakeCurrent(hdc1, hglrc);
@@ -293,14 +289,14 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 
 		// Pull out the relevant values
 		io_mutex.lock();
-			if (closed)
-				BallOffsetRotNow = BallOffsetRot;
-				BallOffsetForNow = BallOffsetFor;
-				BallOffsetSideNow = BallOffsetSide;
-			dx0Now = dx0;
-			dx1Now = dx1;
-			dy0Now = dy0;
-			dy1Now = dy1;
+		if (closed)
+			BallOffsetRotNow = BallOffsetRot;
+		BallOffsetForNow = BallOffsetFor;
+		BallOffsetSideNow = BallOffsetSide;
+		dx0Now = dx0;
+		dx1Now = dx1;
+		dy0Now = dy0;
+		dy1Now = dy1;
 		io_mutex.unlock();
 
 		//Print the elapsed time
