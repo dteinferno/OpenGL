@@ -39,6 +39,9 @@ int DAQRun = 1;
 // Initialize the offset variables and the treadmill
 void InitOffset()
 {
+	// Start the DAQ
+	boost::thread thrd2(&DAQDat);
+
 	// Get the PC frequency and starting time
 	QueryPerformanceFrequency(&li);
 	PCFreq = li.QuadPart;
@@ -49,9 +52,6 @@ void InitOffset()
 	TreadMillStart();
 
 	boost::thread thrd(&TreadMillDat);
-
-	// Start the DAQ
-	boost::thread thrd2(&DAQDat);
 
 }
 
@@ -163,7 +163,7 @@ void TreadMillDat()
 
 		//Update the offset given the ball movement
 		io_mutex.lock();
-		BallOffsetRot += (float)((float)dx[0] / Cam1RotCalibfact + (float)dx[1] / Cam2RotCalibfact) / 2;
+		BallOffsetRot -= (float)((float)dx[0] / Cam1RotCalibfact + (float)dx[1] / Cam2RotCalibfact) / 2;
 		BallOffsetFor += (float)((float)dy[0] / Cam1PosCalibfact + (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
 		BallOffsetSide += (float)((float)dy[0] / Cam1PosCalibfact - (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
 		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(dist2stripe, 2))

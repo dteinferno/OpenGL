@@ -12,7 +12,7 @@
 #include "balloffset.h"
 
 // Define constants related to the shapes
-float dist2stripe = 8;
+float dist2stripe = 40;
 float fovAng = 80 * M_PI / 180;
 
 // Define offset values (Rotational, Forward, and Lateral)
@@ -148,22 +148,22 @@ void InitOpenGL(void)
 	float vertices[] = {
 		// The first four points are the position, while the final two are the texture coordinates
 		// First set of points is for the undistorted vertical stripe.
-		-0.8f, 0.0f, -40.0f, 1.0f, 1.0f, 1.0f,
-		-0.8f, 0.0f, 40.0f, 1.0f, 1.0f, 0.0f,
-		0.8f, 0.0f, -40.0f, 1.0f, 0.0f, 1.0f,
-		0.8f, 0.0f, 40.0f, 1.0f, 0.0f, 0.0f,
+		-2.0f, (float)dist2stripe, -40.0f, 1.0f, 1.0f, 1.0f,
+		-2.0f, (float)dist2stripe, 40.0f, 1.0f, 1.0f, 0.0f,
+		2.0f, (float)dist2stripe, -40.0f, 1.0f, 0.0f, 1.0f,
+		2.0f, (float)dist2stripe, 40.0f, 1.0f, 0.0f, 0.0f,
 
 		// Second set of points for the final display that the texture will be mapped onto.
-		-windowSpan, 0, -windowSpan / aspect, 1.0f, 1.0f, 1.0f,
-		-windowSpan, 0, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
-		windowSpan, 0, -windowSpan / aspect, 1.0f, 0.0f, 1.0f,
-		windowSpan, 0, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
+		-windowSpan, (float)dist2stripe, -windowSpan / aspect, 1.0f, 1.0f, 1.0f,
+		-windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
+		windowSpan, (float)dist2stripe, -windowSpan / aspect, 1.0f, 0.0f, 1.0f,
+		windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
 
 		// Third set of points for a blinking dot that will trigger the photodiode.
-		0.95*windowSpan, 0, windowSpan * ( 1 / aspect - 0.05), 1.0f, 1.0f, 1.0f,
-		0.95*windowSpan, 0, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
-		windowSpan, 0, windowSpan * (1 / aspect - 0.05), 1.0f, 0.0f, 1.0f,
-		windowSpan, 0, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
+		-0.95*windowSpan, (float)dist2stripe, windowSpan * (1 / aspect - 0.05), 1.0f, 0.0f, 1.0f,
+		-0.95*windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
+		-windowSpan, (float)dist2stripe, windowSpan * (1 / aspect - 0.05), 1.0f, 0.0f, 1.0f,
+		-windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
 	};
 
 	// Bind the vertex data to the buffer array
@@ -306,7 +306,7 @@ void RenderFrame(int direction)
 			// Define the scene to be captured
 			glViewport(SCRWIDTH*windowNum / 3, 0, SCRWIDTH / 3, SCRHEIGHT); // Restrict the viewport to the region of interest
 			ProjectionMatrix = glm::perspective(float(360 / M_PI * atanf(tanf(fovAng / 2) * float(SCRHEIGHT) / float(SCRWIDTH))), float(SCRWIDTH) / float(SCRHEIGHT), 0.1f, 1000.0f); //Set the perspective for the projector
-			ViewMatrix = glm::lookAt(glm::vec3(0, dist2stripe, 0), glm::vec3(-(windowNum - 1) * dist2stripe*tanf(fovAng), 0, 0), glm::vec3(0, 0, 1)); //Look at the appropriate direction for the projector
+			ViewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3((windowNum - 1) * dist2stripe*tanf(fovAng), dist2stripe, 0), glm::vec3(0, 0, 1)); //Look at the appropriate direction for the projector
 			glUniformMatrix4fv(ProjectionID, 1, false, glm::value_ptr(ProjectionMatrix));
 			glUniformMatrix4fv(ViewID, 1, false, glm::value_ptr(ViewMatrix));
 
@@ -326,9 +326,10 @@ void RenderFrame(int direction)
 			}
 
 			// Apply the movement
-			ModelMatrix = glm::translate(identity, glm::vec3(BallOffsetSideNow, BallOffsetForNow, 0.0f)) *
-				glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetRotNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetRotNow  * M_PI / 180)), 0.0f)) *
-				glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f));
+			/// For open loop, need glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetRotNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetRotNow  * M_PI / 180)), 0.0f)) *
+			ModelMatrix = 
+				glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) * 
+				glm::translate(identity, glm::vec3(-BallOffsetSideNow, -BallOffsetForNow, 0.0f));
 			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
 
 			// Draw the shapes
@@ -352,7 +353,7 @@ void RenderFrame(int direction)
 		//
 		glUniform1f(cylLocation, (float) 1.0f); // Allow the projection to be distorted for the cylindrical screen using the shader
 		glViewport(0, 0, SCRWIDTH, SCRHEIGHT); // Open up the viewport to the full screen
-		ViewMatrix = glm::lookAt(glm::vec3(0, dist2stripe, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)); //Look at the center of the rectangle
+		ViewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, dist2stripe, 0), glm::vec3(0, 0, 1)); //Look at the center of the rectangle
 		glUniformMatrix4fv(ViewID, 1, false, glm::value_ptr(ViewMatrix));
 		glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(identity));
 		glUniform1f(ProjNumber, 1);  // Correct for the brightness difference between projectors
@@ -369,6 +370,8 @@ void RenderFrame(int direction)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Draw a box to trigger the photodiode
+		glUniform1f(cylLocation, (float) 0.0f); // Initially, we want an undistorted projection
+		glUniform1f(ProjNumber, (int)100);  // No brightness correction the first time
 		glBindTexture(GL_TEXTURE_2D, tex[6]);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(GLfloat)));
 

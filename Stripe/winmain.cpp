@@ -217,6 +217,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 	float dy0Now = 0.0f;
 	float dy1Now = 0.0f;
 	InitOffset();
+	Sleep(1000);
 
 	int cw = 1; // Move the open loop stripe in a clockwise direction
 	int ccw = -1; // Move the open loop stripe in a counterclockwise direction
