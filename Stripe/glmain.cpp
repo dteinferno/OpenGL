@@ -12,7 +12,7 @@
 #include "balloffset.h"
 
 // Define constants related to the shapes
-float dist2stripe = 40;
+float dist2stripe = 10;
 float fovAng = 80 * M_PI / 180;
 
 // Define offset values (Rotational, Forward, and Lateral)
@@ -333,6 +333,13 @@ void RenderFrame(int direction)
 			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
 
 			// Draw the shapes
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+			ModelMatrix =
+				glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) *
+				glm::translate(identity, glm::vec3(-BallOffsetSideNow, -BallOffsetForNow, 0.0f)) *
+				glm::rotate(identity, 180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		}
 		// Capture the stripe as a texture

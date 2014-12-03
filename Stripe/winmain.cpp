@@ -254,7 +254,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 			closed = 1;
 			olsdir = 0;
 		}
-		if (netTime > 15  && netTime < 2 * 60)
+		if (netTime > 15  && netTime < 4 * 60)
 		{
 			closed = 1;
 			olsdir = 1;
@@ -268,12 +268,12 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 				randomreset = 0;
 			}
 		}
-		if (netTime > 2 * 60 && netTime < 3 * 60)
+		if (netTime > 4 * 60 && netTime < 5 * 60)
 		{
 			closed = 1;
 			olsdir = 0;
 		}
-		if (netTime > 3 * 60)
+		if (netTime > 5 * 60)
 			break;
 		////////////////////////////////////////////////////////////////////////////////////
 

@@ -166,9 +166,9 @@ void TreadMillDat()
 		BallOffsetRot -= (float)((float)dx[0] / Cam1RotCalibfact + (float)dx[1] / Cam2RotCalibfact) / 2;
 		BallOffsetFor += (float)((float)dy[0] / Cam1PosCalibfact + (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
 		BallOffsetSide += (float)((float)dy[0] / Cam1PosCalibfact - (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
-		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(dist2stripe, 2))
+		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(dist2stripe-0.2, 2))
 		{
-			BoundaryStopCorrection = pow(dist2stripe, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
+			BoundaryStopCorrection = pow(dist2stripe-0.2, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
 			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
 			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
 		}
