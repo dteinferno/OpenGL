@@ -14,6 +14,7 @@
 // Define constants related to the shapes
 float dist2stripe = 10;
 float fovAng = 80 * M_PI / 180;
+float numAng = 100.0f;
 
 // Define offset values (Rotational, Forward, and Lateral)
 float BallOffsetRotNow = 0.0f;
@@ -148,10 +149,10 @@ void InitOpenGL(void)
 	float vertices[] = {
 		// The first four points are the position, while the final two are the texture coordinates
 		// First set of points is for the undistorted vertical stripe.
-		-2.0f, (float)dist2stripe, -40.0f, 1.0f, 1.0f, 1.0f,
-		-2.0f, (float)dist2stripe, 40.0f, 1.0f, 1.0f, 0.0f,
-		2.0f, (float)dist2stripe, -40.0f, 1.0f, 0.0f, 1.0f,
-		2.0f, (float)dist2stripe, 40.0f, 1.0f, 0.0f, 0.0f,
+		-1.0f, (float)dist2stripe, -40.0f, 1.0f, 1.0f, 1.0f,
+		-1.0f, (float)dist2stripe, 40.0f, 1.0f, 1.0f, 0.0f,
+		1.0f, (float)dist2stripe, -40.0f, 1.0f, 0.0f, 1.0f,
+		1.0f, (float)dist2stripe, 40.0f, 1.0f, 0.0f, 0.0f,
 
 		// Second set of points for the final display that the texture will be mapped onto.
 		-windowSpan, (float)dist2stripe, -windowSpan / aspect, 1.0f, 1.0f, 1.0f,
@@ -164,6 +165,23 @@ void InitOpenGL(void)
 		-0.95*windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
 		-windowSpan, (float)dist2stripe, windowSpan * (1 / aspect - 0.05), 1.0f, 0.0f, 1.0f,
 		-windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
+
+		// Add inner ground floor triangle
+		0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		(float) 0.8*dist2stripe*sin(M_PI / numAng), (float) 0.8*dist2stripe*cos(M_PI / numAng), 1.0f, 1.0f, 0.0f, 1.0f,
+		-(float) 0.8*dist2stripe*sin(M_PI / numAng), (float) 0.8*dist2stripe*cos(M_PI / numAng), 1.0f, 1.0f, 0.0f, 0.0f,
+
+		// Add outer ground floor polygon
+		-(float) 0.95*dist2stripe*sin(M_PI / numAng), (float) 0.95*dist2stripe*cos(M_PI / numAng), 1.0f, 1.0f, 1.0f, 1.0f,
+		-(float)dist2stripe*sin(M_PI / numAng), (float)dist2stripe*cos(M_PI / numAng), 1.0f, 1.0f, 1.0f, 0.0f,
+		(float) 0.95*dist2stripe*sin(M_PI / numAng), (float) 0.95*dist2stripe*cos(M_PI / numAng), 1.0f, 1.0f, 0.0f, 1.0f,
+		(float)dist2stripe*sin(M_PI / numAng), (float)dist2stripe*cos(M_PI / numAng), 1.0f, 1.0f, 0.0f, 0.0f,
+
+		// Add bottom wall points
+		-(float) 0.8*dist2stripe*sin(M_PI / numAng), (float) 0.8*dist2stripe*cos(M_PI / numAng), 3.0f, 1.0f, 1.0f, 1.0f,
+		-(float) 0.95*dist2stripe*sin(M_PI / numAng), (float) 0.95*dist2stripe*cos(M_PI / numAng), 3.0f, 1.0f, 1.0f, 0.0f,
+		(float) 0.8*dist2stripe*sin(M_PI / numAng), (float) 0.8*dist2stripe*cos(M_PI / numAng), 3.0f, 1.0f, 0.0f, 1.0f,
+		(float) 0.95*dist2stripe*sin(M_PI / numAng), (float) 0.95*dist2stripe*cos(M_PI / numAng), 3.0f, 1.0f, 0.0f, 0.0f,
 	};
 
 	// Bind the vertex data to the buffer array
@@ -184,6 +202,17 @@ void InitOpenGL(void)
 
 		8, 9, 10,
 		9, 10, 11,
+
+		12, 13, 14,
+		15, 16, 17,
+		16, 17, 18,
+
+		19, 20, 21,
+		20, 21, 22,
+		13, 14, 19,
+		14, 19, 21,
+		15, 17, 20,
+		17, 20, 22,
 	};
 
 	//Bind the element data to the array.
@@ -283,6 +312,12 @@ void InitOpenGL(void)
 	ViewID = glGetUniformLocation(shader_program, "View");
 	ModelID = glGetUniformLocation(shader_program, "Model");
 
+	// Set up depth
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LEQUAL);
+	glDepthRange(0.0f, 1.0f);
+
 }
 
 void RenderFrame(int direction)
@@ -294,6 +329,7 @@ void RenderFrame(int direction)
 
 		//Clear the image and bind the appropriate color texture
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);  // Set the background color to black
+		glClearDepth(1.0f);
 		glBindTexture(GL_TEXTURE_2D, tex[n]); // Bind the appropriate color texture
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear the buffers
 
@@ -333,14 +369,36 @@ void RenderFrame(int direction)
 			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
 
 			// Draw the shapes
+			// First stripe
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-			ModelMatrix =
-				glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) *
-				glm::translate(identity, glm::vec3(-BallOffsetSideNow, -BallOffsetForNow, 0.0f)) *
-				glm::rotate(identity, 180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			if (0){
+				// Second stripe
+				ModelMatrix =
+					glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) *
+					glm::translate(identity, glm::vec3(-BallOffsetSideNow, -BallOffsetForNow, 0.0f)) *
+					glm::rotate(identity, 180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+				glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
+				for (int ang = 0; ang < int(numAng); ang++) {
+					// Ground plane
+					ModelMatrix =
+						glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) *
+						glm::translate(identity, glm::vec3(-BallOffsetSideNow, -BallOffsetForNow, 0.0f)) *
+						glm::rotate(identity, (float) 360.0f / numAng*ang, glm::vec3(0.0f, 0.0f, 1.0f));
+					glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
+					glBindTexture(GL_TEXTURE_2D, tex[2]);
+					glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, (void*)(18 * sizeof(GLfloat)));
+					glBindTexture(GL_TEXTURE_2D, tex[n]);
+
+					// Trench
+					//glBindTexture(GL_TEXTURE_2D, tex[2]);
+					//glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, (void*)(27 * sizeof(GLfloat)));
+					//glBindTexture(GL_TEXTURE_2D, tex[n]);
+				}
+			}
 		}
 		// Capture the stripe as a texture
 		glBindTexture(GL_TEXTURE_2D, tex[3 + n]);
