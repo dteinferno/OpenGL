@@ -161,17 +161,27 @@ void TreadMillDat()
 			dy[1] += ((int)rBuffer[i + 5]) - 128;
 		}
 
+		float deltaFor = (float)((float)dy[0] / Cam1PosCalibfact + (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
+		float deltaSide = (float)((float)dy[0] / Cam1PosCalibfact - (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
 		//Update the offset given the ball movement
 		io_mutex.lock();
 		BallOffsetRot -= (float)((float)dx[0] / Cam1RotCalibfact + (float)dx[1] / Cam2RotCalibfact) / 2;
-		BallOffsetFor += (float)((float)dy[0] / Cam1PosCalibfact + (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
-		BallOffsetSide += (float)((float)dy[0] / Cam1PosCalibfact - (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
+		BallOffsetFor += deltaFor*cos(BallOffsetRot)+deltaSide*sin(BallOffsetRot);
+		BallOffsetSide += deltaFor*sin(BallOffsetRot) - deltaSide*cos(BallOffsetRot);
 		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(dist2stripe*0.95, 2))
 		{
 			BoundaryStopCorrection = pow(dist2stripe*0.95, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
 			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
 			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
 		}
+
+		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) < pow(1.05, 2))
+		{
+			BoundaryStopCorrection = pow(1.05, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
+			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
+			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
+		}
+
 		dx0 += (float)dx[0];
 		dx1 += (float)dx[1];
 		dy0 += (float)dy[0];

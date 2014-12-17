@@ -40,6 +40,7 @@ const char* fragment_shader =
 "#version 400\n"
 "in vec2 Texcoord;"
 "out vec4 frag_colour;"
+"uniform int color;"
 "uniform float cyl;"
 "uniform int projnum;"
 "uniform sampler2D tex;"
@@ -105,11 +106,26 @@ const char* fragment_shader =
 
 "  vec2 distort = vec2 (distorts, distortt);"
 "  vec4 unmodColor = texture(tex, distort);"
+" if (color == 1)"
+" {"
+"  unmodColor.g = 0.0;"
+"  unmodColor.b = 0.0;"
+" }"
+" if (color == 2)"
+" {"
+"  unmodColor.r = 0.0;"
+"  unmodColor.b = 0.0;"
+" }"
+" if (color == 3)"
+" {"
+"  unmodColor.r = 0.0;"
+"  unmodColor.g = 0.0;"
+" }"
 "  frag_colour = projcorrect*brightcorrect*vec4(unmodColor.r*1.0, unmodColor.g*1.0, unmodColor.b*1.0, 1.0 );"
 "}";
 
 // Define the OpenGL constants
-GLuint vao;
+GLuint vao[2];
 GLuint vbo;
 GLuint vs;
 GLuint fs;
@@ -117,12 +133,21 @@ GLuint shader_program;
 GLuint *tex;
 GLuint cylLocation;
 GLuint ProjNumber;
+GLuint setColor;
 glm::mat4 ProjectionMatrix;
 GLuint ProjectionID;
 glm::mat4 ViewMatrix;
 GLuint ViewID;
 glm::mat4 ModelMatrix;
 GLuint ModelID;
+
+// Constants for loading objects from the shader
+GLuint vbo_obj;
+GLuint uvbuffer_obj;
+GLuint normalsbuffer_obj;
+std::vector<glm::vec3> vertices_obj;
+std::vector<glm::vec2> uvs_obj;
+std::vector<glm::vec3> normals_obj;
 
 // InitOpenGL: initializes OpenGL; defines buffers, constants, etc...
 void InitOpenGL(void)
@@ -131,14 +156,63 @@ void InitOpenGL(void)
 	glClearDepth(1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
+	glEnable(GL_CULL_FACE);
 	glShadeModel(GL_SMOOTH);
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
 
-	// Initialize the vertex array object
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
 
-	// Initialize the buffer array object
+	// Create the shaders
+	vs = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vs, 1, &vertex_shader, NULL);
+	glCompileShader(vs);
+
+	fs = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fs, 1, &fragment_shader, NULL);
+	glCompileShader(fs);
+
+	shader_program = glCreateProgram();
+	glAttachShader(shader_program, fs);
+	glAttachShader(shader_program, vs);
+	glLinkProgram(shader_program);
+	glUseProgram(shader_program);
+
+	// Initialize the vertex array object for the object
+	glGenVertexArrays(1, &vao[0]);
+	glBindVertexArray(vao[0]);
+
+	// Read our .obj file
+	bool resdat = loadOBJ("d://OpenGL//BlenderObjects//Cylinder.obj", vertices_obj, uvs_obj, normals_obj);
+
+	glGenBuffers(1, &vbo_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
+	glBufferData(GL_ARRAY_BUFFER, vertices_obj.size() * sizeof(glm::vec3), &vertices_obj[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &uvbuffer_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
+	glBufferData(GL_ARRAY_BUFFER, uvs_obj.size() * sizeof(glm::vec2), &uvs_obj[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &normalsbuffer_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, normalsbuffer_obj);
+	glBufferData(GL_ARRAY_BUFFER, normals_obj.size() * sizeof(glm::vec3), &normals_obj[0], GL_STATIC_DRAW);
+
+	// Create a pointer for the position
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
+	GLint posAttrib = glGetAttribLocation(shader_program, "position");
+	glEnableVertexAttribArray(posAttrib);
+	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	// Create a pointer for the texture coordinates
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
+	GLint texAttrib = glGetAttribLocation(shader_program, "texcoord");
+	glEnableVertexAttribArray(texAttrib);
+	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+
+	// Create our distorted screen
+	// Initialize the vertex array object
+	glGenVertexArrays(1, &vao[1]);
+	glBindVertexArray(vao[1]);
+
 	glGenBuffers(1, &vbo);
 
 	// Define constants for defining the shapes
@@ -197,11 +271,11 @@ void InitOpenGL(void)
 		0, 1, 2,
 		1, 2, 3,
 
-		4, 5, 6,
+		6, 5, 4,
 		5, 6, 7,
 
 		8, 9, 10,
-		9, 10, 11,
+		11, 10, 9,
 
 		12, 13, 14,
 		15, 16, 17,
@@ -219,87 +293,53 @@ void InitOpenGL(void)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
 
-	// Create the shaders
-	vs = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vs, 1, &vertex_shader, NULL);
-	glCompileShader(vs);
-
-	fs = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fs, 1, &fragment_shader, NULL);
-	glCompileShader(fs);
-
-	shader_program = glCreateProgram();
-	glAttachShader(shader_program, fs);
-	glAttachShader(shader_program, vs);
-	glLinkProgram(shader_program);
-	glUseProgram(shader_program);
-
 	// Create a pointer for the position
-	GLint posAttrib = glGetAttribLocation(shader_program, "position");
 	glEnableVertexAttribArray(posAttrib);
 	glVertexAttribPointer(posAttrib, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), 0);
 
 	// Create a pointer for the texture coordinates
-	GLint texAttrib = glGetAttribLocation(shader_program, "texcoord");
 	glEnableVertexAttribArray(texAttrib);
 	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(4 * sizeof(GLfloat)));
 
+
 	// Create a texture array
-	tex = new GLuint[7];
-	glGenTextures(7, tex);
+	tex = new GLuint[5];
+	glGenTextures(5, tex);
 
-	// Make the first texture red
+	// Uniform white texture
 	glBindTexture(GL_TEXTURE_2D, tex[0]);
-	float pixelsR[] = {
-		1.0f, 0.0f, 0.0f,
+	float pixelsW[] = {
+		1.0f, 1.0f, 1.0f,
 	};
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_FLOAT, pixelsR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_FLOAT, pixelsW);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	// Make the second texture green
-	glBindTexture(GL_TEXTURE_2D, tex[1]);
-	float pixelsG[] = {
-		0.0f, 1.0f, 0.0f,
-	};
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_FLOAT, pixelsG);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	// Make the third texture blue
-	glBindTexture(GL_TEXTURE_2D, tex[2]);
-	float pixelsB[] = {
-		0.0f, 0.0f, 1.0f,
-	};
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_FLOAT, pixelsB);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	// Prep the remaining textures to be used for cylindrical distortion
 	for (int n = 0; n < 3; n++) {
-		glBindTexture(GL_TEXTURE_2D, tex[3 + n]);
+		glBindTexture(GL_TEXTURE_2D, tex[1 + n]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 
-	// Make the final texture white (for the photodiode)
-	glBindTexture(GL_TEXTURE_2D, tex[6]);
-	float pixelsW[] = {
-		1.0f, 1.0f, 1.0f,
-	};
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_FLOAT, pixelsW);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	// Load a texture
+	int texWidth, texHeight;
+	unsigned char* texImage = SOIL_load_image("d://OpenGL//Textures//SqNoise.png", &texWidth, &texHeight, 0, SOIL_LOAD_RGB);
+
+	glBindTexture(GL_TEXTURE_2D, tex[4]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texWidth, texHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, texImage);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	
+	
+	SOIL_free_image_data(texImage);
 
 	// Pull out the cylindrical distortion switch uniform from the shader
 	cylLocation = glGetUniformLocation(shader_program, "cyl");
@@ -307,16 +347,14 @@ void InitOpenGL(void)
 	// Pull out the projector switch to set the brightness
 	ProjNumber = glGetUniformLocation(shader_program, "projnum");
 
+	// Pull out the color setting
+	setColor = glGetUniformLocation(shader_program, "color");
+
 	// Pull out the matrices
 	ProjectionID = glGetUniformLocation(shader_program, "Projection");
 	ViewID = glGetUniformLocation(shader_program, "View");
 	ModelID = glGetUniformLocation(shader_program, "Model");
 
-	// Set up depth
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-	glDepthFunc(GL_LEQUAL);
-	glDepthRange(0.0f, 1.0f);
 
 }
 
@@ -330,9 +368,9 @@ void RenderFrame(int direction)
 		//Clear the image and bind the appropriate color texture
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);  // Set the background color to black
 		glClearDepth(1.0f);
-		glBindTexture(GL_TEXTURE_2D, tex[n]); // Bind the appropriate color texture
+		glBindTexture(GL_TEXTURE_2D, tex[4]); // Bind the appropriate color texture
+		glUniform1f(setColor, (int)n+1);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear the buffers
-
 		glUniform1f(cylLocation, (float) 0.0f); // Initially, we want an undistorted projection
 		glUniform1f(ProjNumber, (int)100);  // No brightness correction the first time
 
@@ -369,10 +407,16 @@ void RenderFrame(int direction)
 			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
 
 			// Draw the shapes
-			// First stripe
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(vao[0]);
+			glDrawArrays(GL_TRIANGLES, 0, vertices_obj.size());
+			
 
 			if (0){
+
+				glBindVertexArray(vao[1]);
+				// First stripe
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
 				// Second stripe
 				ModelMatrix =
 					glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) *
@@ -401,7 +445,7 @@ void RenderFrame(int direction)
 			}
 		}
 		// Capture the stripe as a texture
-		glBindTexture(GL_TEXTURE_2D, tex[3 + n]);
+		glBindTexture(GL_TEXTURE_2D, tex[1 + n]);
 		glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, SCRWIDTH, SCRHEIGHT, 0);
 	}
 
@@ -414,8 +458,9 @@ void RenderFrame(int direction)
 
 		// Clear the screen and apply
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glBindVertexArray(vao[1]);
 
-		//
+		glUniform1f(setColor, (int)0);
 		glUniform1f(cylLocation, (float) 1.0f); // Allow the projection to be distorted for the cylindrical screen using the shader
 		glViewport(0, 0, SCRWIDTH, SCRHEIGHT); // Open up the viewport to the full screen
 		ViewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, dist2stripe, 0), glm::vec3(0, 0, 1)); //Look at the center of the rectangle
@@ -425,7 +470,7 @@ void RenderFrame(int direction)
 
 		// Draw the rectangle
 		for (int n = 0; n < 3; n++) {
-			glBindTexture(GL_TEXTURE_2D, tex[3 + n]);
+			glBindTexture(GL_TEXTURE_2D, tex[1 + n]);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(GLfloat)));
 		}
 
@@ -437,9 +482,95 @@ void RenderFrame(int direction)
 	// Draw a box to trigger the photodiode
 		glUniform1f(cylLocation, (float) 0.0f); // Initially, we want an undistorted projection
 		glUniform1f(ProjNumber, (int)100);  // No brightness correction the first time
-		glBindTexture(GL_TEXTURE_2D, tex[6]);
+		glBindTexture(GL_TEXTURE_2D, tex[4]);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(GLfloat)));
 
+}
+
+// Load a Blender generated object
+bool loadOBJ( const char * path, std::vector<glm::vec3> & out_vertices, std::vector<glm::vec2> & out_uvs, std::vector<glm::vec3> & out_normals)
+{
+	// Indices of the vertices, texture coordinates, and normals
+	std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
+	// Temporary vectors to store the values from each line
+	std::vector<glm::vec3> temp_vertices;
+	std::vector<glm::vec2> temp_uvs;
+	std::vector<glm::vec3> temp_normals;
+
+	// Open the file
+	FILE * objFile;
+	fopen_s(&objFile, path, "r");
+	// Pull the data out of the file
+	while (1){
+
+		char lineHeader[128];
+		// read the first word of the line
+		int res = fscanf_s(objFile, "%s", lineHeader, _countof(lineHeader));
+		if (res == EOF){
+			break; // EOF = End Of File. Quit the loop.
+		}
+		// parse lineHeader
+		if (strcmp(lineHeader, "v") == 0){
+			glm::vec3 vertex;
+			fscanf_s(objFile, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
+			temp_vertices.push_back(vertex);
+		}
+		else if (strcmp(lineHeader, "vt") == 0){
+			glm::vec2 uv;
+			fscanf_s(objFile, "%f %f\n", &uv.x, &uv.y);
+			temp_uvs.push_back(uv);
+		}
+		else if (strcmp(lineHeader, "vn") == 0){
+			glm::vec3 normal;
+			fscanf_s(objFile, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
+			temp_normals.push_back(normal);
+		}
+		else if (strcmp(lineHeader, "f") == 0){
+			std::string vertex1, vertex2, vertex3;
+			unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
+			int matches = fscanf_s(objFile, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
+			if (matches != 9){
+				return false;
+			}
+			vertexIndices.push_back(vertexIndex[0]);
+			vertexIndices.push_back(vertexIndex[1]);
+			vertexIndices.push_back(vertexIndex[2]);
+			uvIndices.push_back(uvIndex[0]);
+			uvIndices.push_back(uvIndex[1]);
+			uvIndices.push_back(uvIndex[2]);
+			normalIndices.push_back(normalIndex[0]);
+			normalIndices.push_back(normalIndex[1]);
+			normalIndices.push_back(normalIndex[2]);
+		}
+		else{
+			// Probably a comment, eat up the rest of the line
+			char stupidBuffer[1000];
+			fgets(stupidBuffer, 1000, objFile);
+		}
+
+	}
+
+	// For each vertex of each triangle
+	for (unsigned int i = 0; i<vertexIndices.size(); i++){
+
+		// Get the indices of its attributes
+		unsigned int vertexIndex = vertexIndices[i];
+		unsigned int uvIndex = uvIndices[i];
+		unsigned int normalIndex = normalIndices[i];
+
+		// Get the attributes thanks to the index
+		glm::vec3 vertex = temp_vertices[vertexIndex - 1];
+		glm::vec2 uv = temp_uvs[uvIndex - 1];
+		glm::vec3 normal = temp_normals[normalIndex - 1];
+
+		// Put the attributes in buffers
+		out_vertices.push_back(vertex);
+		out_uvs.push_back(uv);
+		out_normals.push_back(normal);
+
+	}
+
+	return true;
 }
 
 
@@ -451,6 +582,7 @@ void GLShutdown(void)
 	glDeleteShader(fs);
 	glDeleteShader(vs);
 	glDeleteBuffers(1, &vbo);
-	glDeleteVertexArrays(1, &vao);
+	glDeleteVertexArrays(1, &vao[0]);
+	glDeleteVertexArrays(1, &vao[1]);
 	CloseOffset();
 }

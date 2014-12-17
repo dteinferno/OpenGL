@@ -15,6 +15,7 @@ GLEW has been tested on a variety of operating systems, including Windows, Linux
 #include <stdio.h>
 #include <string.h>
 #include <tchar.h>
+
 ////////////////////////////////////////////////////////////////////////////////////
 //        Header File for the Main Routine for Drawing Objects via Open           //
 ////////////////////////////////////////////////////////////////////////////////////
@@ -33,6 +34,9 @@ GLEW has been tested on a variety of operating systems, including Windows, Linux
 // Boost headers for setting up the data server
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
+
+// Load Simple OpenGL Image Library
+#include "SOIL.h"
 
 // Define pi for use in converting degrees to radians
 #ifndef M_PI
@@ -58,3 +62,6 @@ void RenderFrame(int direction);
 
 // Clear the buffers, delete the shaders, etc...
 void GLShutdown(void);
+
+// Load an object
+bool loadOBJ(const char * path, std::vector<glm::vec3> & out_vertices, std::vector<glm::vec2> & out_uvs, std::vector<glm::vec3> & out_normals);

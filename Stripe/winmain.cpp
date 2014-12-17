@@ -248,6 +248,18 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		QueryPerformanceCounter(&li);
 		float netTime = (li.QuadPart - CounterStart) / PCFreq;
 
+		if (randomreset)
+		{
+			//Generate a random starting offset
+			srand(time(0));
+			io_mutex.lock();
+			BallOffsetRot = fmod(rand(), 180)-90;
+			BallOffsetFor = - dist2stripe / 2.0f;
+			BallOffsetSide = 0.0f;
+			io_mutex.unlock();
+			randomreset = 0;
+		}
+
 		/////////////////////// EXPERIMENT SPECIFICS LIVE HERE /////////////////////////////
 		if (netTime < 10)
 		{
@@ -258,15 +270,6 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		{
 			closed = 1;
 			olsdir = 1;
-			if (randomreset)
-			{
-				//Generate a random starting offset
-				srand(time(0));
-				io_mutex.lock();
-				BallOffsetRot = fmod(rand(), 240) - 120.0f;
-				io_mutex.unlock();
-				randomreset = 0;
-			}
 		}
 		if (netTime > 2 * 60 && netTime < 3 * 60)
 		{
