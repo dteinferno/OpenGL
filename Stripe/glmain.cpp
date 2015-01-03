@@ -223,19 +223,19 @@ void InitOpenGL(void)
 	float vertices[] = {
 		// The first four points are the position, while the final two are the texture coordinates
 		// First set of points is for the undistorted vertical stripe.
-		-1.0f, (float)dist2stripe, -40.0f, 1.0f, 1.0f, 1.0f,
-		-1.0f, (float)dist2stripe, 40.0f, 1.0f, 1.0f, 0.0f,
-		1.0f, (float)dist2stripe, -40.0f, 1.0f, 0.0f, 1.0f,
-		1.0f, (float)dist2stripe, 40.0f, 1.0f, 0.0f, 0.0f,
+		-0.8f, (float)dist2stripe, -40.0f, 1.0f, 1.0f, 1.0f,
+		-0.8f, (float)dist2stripe, 40.0f, 1.0f, 1.0f, 0.0f,
+		0.8f, (float)dist2stripe, -40.0f, 1.0f, 0.0f, 1.0f,
+		0.8f, (float)dist2stripe, 40.0f, 1.0f, 0.0f, 0.0f,
 
 		// Second set of points for the final display that the texture will be mapped onto.
-		-windowSpan, (float)dist2stripe, -windowSpan / aspect, 1.0f, 1.0f, 1.0f,
-		-windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
-		windowSpan, (float)dist2stripe, -windowSpan / aspect, 1.0f, 0.0f, 1.0f,
-		windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
+		-windowSpan, (float)dist2stripe, -windowSpan / aspect, 1.0f, 0.0f, 1.0f,
+		-windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
+		windowSpan, (float)dist2stripe, -windowSpan / aspect, 1.0f, 1.0f, 1.0f,
+		windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
 
 		// Third set of points for a blinking dot that will trigger the photodiode.
-		-0.95*windowSpan, (float)dist2stripe, windowSpan * (1 / aspect - 0.05), 1.0f, 0.0f, 1.0f,
+		-0.95*windowSpan, (float)dist2stripe, windowSpan * (1 / aspect - 0.05), 1.0f, 1.0f, 1.0f,
 		-0.95*windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 1.0f, 0.0f,
 		-windowSpan, (float)dist2stripe, windowSpan * (1 / aspect - 0.05), 1.0f, 0.0f, 1.0f,
 		-windowSpan, (float)dist2stripe, windowSpan / aspect, 1.0f, 0.0f, 0.0f,
@@ -399,24 +399,47 @@ void RenderFrame(int direction)
 				BallOffsetSideNow = 0.0f;
 			}
 
+			if (stopped)
+			{
+				BallOffsetRotNow = 0.0f;
+				BallOffsetForNow = 0.0f;
+				BallOffsetSideNow = 0.0f;
+			}
+
 			// Apply the movement
-			/// For open loop, need glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetRotNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetRotNow  * M_PI / 180)), 0.0f)) *
-			ModelMatrix = 
-				glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) * 
-				glm::translate(identity, glm::vec3(-BallOffsetSideNow, -BallOffsetForNow, 0.0f));
+			if (closed)
+			{
+				ModelMatrix =
+					glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) *
+					glm::translate(identity, glm::vec3(-BallOffsetSideNow, -BallOffsetForNow, 0.0f));
+			}
+			else
+			{
+				ModelMatrix = 
+					glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetRotNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetRotNow  * M_PI / 180)), 0.0f)) *
+					glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f));
+			}
 			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
+			
 
 			// Draw the shapes
 			glBindVertexArray(vao[0]);
 			glDrawArrays(GL_TRIANGLES, 0, vertices_obj.size());
-			
+
 
 			if (0){
-
+				// Grating
 				glBindVertexArray(vao[1]);
-				// First stripe
-				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
+				int numStripes = 18;
+				float gratAng = 360.0 / 18.0;
+				for (int angGrat = 0; angGrat < numStripes; angGrat++)
+				{
+					ModelMatrix =
+						//glm::translate(identity, glm::vec3(dist2stripe*sinf((BallOffsetRotNow) * M_PI / 180), dist2stripe*(1.0f - cosf((BallOffsetRotNow)  * M_PI / 180)), 0.0f)) *
+						glm::rotate(identity, BallOffsetRotNow + gratAng*angGrat, glm::vec3(0.0f, 0.0f, 1.0f));
+					glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
+					glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+				}
 				// Second stripe
 				ModelMatrix =
 					glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) *
@@ -482,7 +505,7 @@ void RenderFrame(int direction)
 	// Draw a box to trigger the photodiode
 		glUniform1f(cylLocation, (float) 0.0f); // Initially, we want an undistorted projection
 		glUniform1f(ProjNumber, (int)100);  // No brightness correction the first time
-		glBindTexture(GL_TEXTURE_2D, tex[4]);
+		glBindTexture(GL_TEXTURE_2D, tex[0]);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(GLfloat)));
 
 }

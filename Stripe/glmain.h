@@ -46,6 +46,9 @@ GLEW has been tested on a variety of operating systems, including Windows, Linux
 // To switch between open and closed loop
 extern int closed;
 
+// To stop all motion
+extern int stopped;
+
 // Set the distance between the fly and the initial object of interest
 extern float dist2stripe;
 

@@ -61,7 +61,7 @@ void TimeOffset(float &tOffset, int dir, __int64 start) {
 	// get delta time for this iteration:
 	QueryPerformanceCounter(&li);
 	float fDeltaTime = (li.QuadPart - start) / PCFreq;
-	float period = 20;
+	float period = 15;
 	float gain = 360 / period;
 	tOffset = dir*fDeltaTime*gain;
 }
@@ -165,9 +165,9 @@ void TreadMillDat()
 		float deltaSide = (float)((float)dy[0] / Cam1PosCalibfact - (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
 		//Update the offset given the ball movement
 		io_mutex.lock();
-		BallOffsetRot -= (float)((float)dx[0] / Cam1RotCalibfact + (float)dx[1] / Cam2RotCalibfact) / 2;
-		BallOffsetFor += deltaFor*cos(BallOffsetRot)+deltaSide*sin(BallOffsetRot);
-		BallOffsetSide += deltaFor*sin(BallOffsetRot) - deltaSide*cos(BallOffsetRot);
+		BallOffsetRot += (float)((float)dx[0] / Cam1RotCalibfact + (float)dx[1] / Cam2RotCalibfact) / 2;
+		BallOffsetFor += deltaFor*cosf(BallOffsetRot * M_PI / 180) + deltaSide*sinf(BallOffsetRot * M_PI / 180);
+		BallOffsetSide += deltaFor*sinf(BallOffsetRot * M_PI / 180) - deltaSide*cosf(BallOffsetRot * M_PI / 180);
 		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(dist2stripe*0.95, 2))
 		{
 			BoundaryStopCorrection = pow(dist2stripe*0.95, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
@@ -175,9 +175,9 @@ void TreadMillDat()
 			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
 		}
 
-		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) < pow(1.05, 2))
+		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) < pow(2, 2))
 		{
-			BoundaryStopCorrection = pow(1.05, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
+			BoundaryStopCorrection = pow(2, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
 			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
 			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
 		}

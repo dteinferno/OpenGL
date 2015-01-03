@@ -29,6 +29,9 @@ and segments of Jim Strother's Win API code
 // Open loop or closed loop
 int closed;
 
+// Update visual stim or stop
+int stopped = 0;
+
 // Filename for the synchronization file
 char* syncfname;
 char syncfnamebuf[100];
@@ -212,6 +215,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 	fprintf(str, "Current date and time: %s\n", s);
 
 
+	// Variables to store the treadmill update signal
 	float dx0Now = 0.0f;
 	float dx1Now = 0.0f;
 	float dy0Now = 0.0f;
@@ -261,12 +265,12 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		}
 
 		/////////////////////// EXPERIMENT SPECIFICS LIVE HERE /////////////////////////////
-		if (netTime < 10)
+		if (netTime < 1)
 		{
 			closed = 1;
 			olsdir = 0;
 		}
-		if (netTime > 10  && netTime < 2 * 60)
+		if (netTime > 1 && netTime < 2 * 60)
 		{
 			closed = 1;
 			olsdir = 1;
