@@ -225,7 +225,6 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 
 	int cw = 1; // Move the open loop stripe in a clockwise direction
 	int ccw = -1; // Move the open loop stripe in a counterclockwise direction
-	int olsdir; // Direction of the open loop stripe
 	int randomreset = 1;
 
 	PFNWGLSWAPINTERVALEXTPROC       wglSwapIntervalEXT = NULL;
@@ -257,8 +256,8 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 			//Generate a random starting offset
 			srand(time(0));
 			io_mutex.lock();
-			BallOffsetRot = fmod(rand(), 180)-90;
-			BallOffsetFor = - dist2stripe / 2.0f;
+			BallOffsetRot = fmod(rand(), 180) - 90;
+			BallOffsetFor = -dist2stripe*0.5;
 			BallOffsetSide = 0.0f;
 			io_mutex.unlock();
 			randomreset = 0;
@@ -272,7 +271,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 		}
 		if (netTime > 1 && netTime < 2 * 60)
 		{
-			closed = 1;
+			closed = 1;		
 			olsdir = 1;
 		}
 		if (netTime > 2 * 60 && netTime < 3 * 60)

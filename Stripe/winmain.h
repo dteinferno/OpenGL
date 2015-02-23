@@ -29,3 +29,6 @@ extern int indexPixelFormat;
 // Define a constant to control the running of the main while loop
 extern bool quit;
 
+// Variable to control the direction of the open loop stripe (+/-1) AND whether or not to display anything at all
+extern int olsdir; 
+

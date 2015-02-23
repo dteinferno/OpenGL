@@ -21,6 +21,9 @@ float BallOffsetRotNow = 0.0f;
 float BallOffsetForNow = 0.0f;
 float BallOffsetSideNow = 0.0f;
 
+// Variable to control the direction of the open loop stripe (+/-1) AND whether or not to display anything at all
+int olsdir;
+
 // Vertex shader which passes through the texture and position coordinates
 const char* vertex_shader =
 "#version 400\n"
@@ -48,9 +51,9 @@ const char* fragment_shader =
 
 "  float LtoScreen = 6.55;"
 "  float wofScreen = 1.93;"
-"  float proj0power = 0.268;"
-"  float proj1power = 0.25;"
-"  float proj2power = 0.262;"
+"  float proj0power = 35.8;"
+"  float proj1power = 43.8;"
+"  float proj2power = 26.4;"
 "  float projnorm = min(proj0power, min(proj1power, proj2power));"
 
 "  float angofScreen = 4*3.141592/9;"
@@ -95,9 +98,9 @@ const char* fragment_shader =
 
 " float projcorrect = projnorm/proj1power;"
 " if (Texcoord.s < 0.3333)"
-"  projcorrect = projnorm/proj0power;"
-" if (Texcoord.s > 0.6666)"
 "  projcorrect = projnorm/proj2power;"
+" if (Texcoord.s > 0.6666)"
+"  projcorrect = projnorm/proj0power;"
 
 " if (projnum == 100)"
 " {"
@@ -125,7 +128,7 @@ const char* fragment_shader =
 "}";
 
 // Define the OpenGL constants
-GLuint vao[2];
+GLuint vao[4];
 GLuint vbo;
 GLuint vs;
 GLuint fs;
@@ -180,7 +183,7 @@ void InitOpenGL(void)
 	glGenVertexArrays(1, &vao[0]);
 	glBindVertexArray(vao[0]);
 
-	// Read our .obj file
+	// Read our first .obj file
 	bool resdat = loadOBJ("d://OpenGL//BlenderObjects//Cylinder.obj", vertices_obj, uvs_obj, normals_obj);
 
 	glGenBuffers(1, &vbo_obj);
@@ -207,11 +210,68 @@ void InitOpenGL(void)
 	glEnableVertexAttribArray(texAttrib);
 	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
+	// Initialize the vertex array object for the object
+	glGenVertexArrays(1, &vao[1]);
+	glBindVertexArray(vao[1]);
+
+	// Read our first .obj file
+	resdat = loadOBJ("d://OpenGL//BlenderObjects//FrontCyl.obj", vertices_obj, uvs_obj, normals_obj);
+
+	glGenBuffers(1, &vbo_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
+	glBufferData(GL_ARRAY_BUFFER, vertices_obj.size() * sizeof(glm::vec3), &vertices_obj[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &uvbuffer_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
+	glBufferData(GL_ARRAY_BUFFER, uvs_obj.size() * sizeof(glm::vec2), &uvs_obj[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &normalsbuffer_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, normalsbuffer_obj);
+	glBufferData(GL_ARRAY_BUFFER, normals_obj.size() * sizeof(glm::vec3), &normals_obj[0], GL_STATIC_DRAW);
+
+	// Create a pointer for the position
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
+	glEnableVertexAttribArray(posAttrib);
+	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	// Create a pointer for the texture coordinates
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
+	glEnableVertexAttribArray(texAttrib);
+	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	// Initialize the vertex array object for the object
+	glGenVertexArrays(1, &vao[2]);
+	glBindVertexArray(vao[2]);
+
+	// Read our second .obj file
+	resdat = loadOBJ("d://OpenGL//BlenderObjects//BackCyl.obj", vertices_obj, uvs_obj, normals_obj);
+
+	glGenBuffers(1, &vbo_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
+	glBufferData(GL_ARRAY_BUFFER, vertices_obj.size() * sizeof(glm::vec3), &vertices_obj[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &uvbuffer_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
+	glBufferData(GL_ARRAY_BUFFER, uvs_obj.size() * sizeof(glm::vec2), &uvs_obj[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &normalsbuffer_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, normalsbuffer_obj);
+	glBufferData(GL_ARRAY_BUFFER, normals_obj.size() * sizeof(glm::vec3), &normals_obj[0], GL_STATIC_DRAW);
+
+	// Create a pointer for the position
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
+	glEnableVertexAttribArray(posAttrib);
+	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	// Create a pointer for the texture coordinates
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
+	glEnableVertexAttribArray(texAttrib);
+	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	// Create our distorted screen
 	// Initialize the vertex array object
-	glGenVertexArrays(1, &vao[1]);
-	glBindVertexArray(vao[1]);
+	glGenVertexArrays(1, &vao[3]);
+	glBindVertexArray(vao[3]);
 
 	glGenBuffers(1, &vbo);
 
@@ -223,10 +283,10 @@ void InitOpenGL(void)
 	float vertices[] = {
 		// The first four points are the position, while the final two are the texture coordinates
 		// First set of points is for the undistorted vertical stripe.
-		-0.8f, (float)dist2stripe, -40.0f, 1.0f, 1.0f, 1.0f,
-		-0.8f, (float)dist2stripe, 40.0f, 1.0f, 1.0f, 0.0f,
-		0.8f, (float)dist2stripe, -40.0f, 1.0f, 0.0f, 1.0f,
-		0.8f, (float)dist2stripe, 40.0f, 1.0f, 0.0f, 0.0f,
+		-2.0f, (float)dist2stripe, -40.0f, 1.0f, 1.0f, 1.0f,
+		-2.0f, (float)dist2stripe, 40.0f, 1.0f, 1.0f, 0.0f,
+		2.0f, (float)dist2stripe, -40.0f, 1.0f, 0.0f, 1.0f,
+		2.0f, (float)dist2stripe, 40.0f, 1.0f, 0.0f, 0.0f,
 
 		// Second set of points for the final display that the texture will be mapped onto.
 		-windowSpan, (float)dist2stripe, -windowSpan / aspect, 1.0f, 0.0f, 1.0f,
@@ -380,7 +440,7 @@ void RenderFrame(int direction)
 			// Define the scene to be captured
 			glViewport(SCRWIDTH*windowNum / 3, 0, SCRWIDTH / 3, SCRHEIGHT); // Restrict the viewport to the region of interest
 			ProjectionMatrix = glm::perspective(float(360 / M_PI * atanf(tanf(fovAng / 2) * float(SCRHEIGHT) / float(SCRWIDTH))), float(SCRWIDTH) / float(SCRHEIGHT), 0.1f, 1000.0f); //Set the perspective for the projector
-			ViewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3((windowNum - 1) * dist2stripe*tanf(fovAng), dist2stripe, 0), glm::vec3(0, 0, 1)); //Look at the appropriate direction for the projector
+			ViewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3((windowNum - 1) * tanf(fovAng), 1, 0), glm::vec3(0, 0, 1)); //Look at the appropriate direction for the projector
 			glUniformMatrix4fv(ProjectionID, 1, false, glm::value_ptr(ProjectionMatrix));
 			glUniformMatrix4fv(ViewID, 1, false, glm::value_ptr(ViewMatrix));
 
@@ -405,31 +465,36 @@ void RenderFrame(int direction)
 				BallOffsetForNow = 0.0f;
 				BallOffsetSideNow = 0.0f;
 			}
+			float NormObjVectX = BallOffsetSideNow / sqrt(pow(BallOffsetForNow, 2) + pow(BallOffsetSideNow, 2));
+			float NormObjVectY = BallOffsetForNow / sqrt(pow(BallOffsetForNow, 2) + pow(BallOffsetSideNow, 2));
+			float DotProd = NormObjVectX * sin(BallOffsetRotNow) + NormObjVectY * cos(BallOffsetRotNow);
 
 			// Apply the movement
+			ModelMatrix =
+				glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) *
+				glm::translate(identity, glm::vec3(-BallOffsetSideNow, -BallOffsetForNow, 0.0f));
+			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
+			
 			if (closed)
 			{
-				ModelMatrix =
-					glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f)) *
-					glm::translate(identity, glm::vec3(-BallOffsetSideNow, -BallOffsetForNow, 0.0f));
+				// Draw the shapes
+				glBindVertexArray(vao[0]);
+				glDrawArrays(GL_TRIANGLES, 0, vertices_obj.size());
+				//glBindVertexArray(vao[1]);
+				//glDrawArrays(GL_TRIANGLES, 0, vertices_obj.size());
+				//glBindVertexArray(vao[2]);
+				//glDrawArrays(GL_TRIANGLES, 0, vertices_obj.size());
 			}
 			else
 			{
-				ModelMatrix = 
-					glm::translate(identity, glm::vec3(dist2stripe*sinf(BallOffsetRotNow * M_PI / 180), dist2stripe*(1.0f - cosf(BallOffsetRotNow  * M_PI / 180)), 0.0f)) *
-					glm::rotate(identity, BallOffsetRotNow, glm::vec3(0.0f, 0.0f, 1.0f));
+				glBindVertexArray(vao[3]);
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 			}
-			glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(ModelMatrix));
-			
-
-			// Draw the shapes
-			glBindVertexArray(vao[0]);
-			glDrawArrays(GL_TRIANGLES, 0, vertices_obj.size());
 
 
 			if (0){
 				// Grating
-				glBindVertexArray(vao[1]);
+				glBindVertexArray(vao[2]);
 				int numStripes = 18;
 				float gratAng = 360.0 / 18.0;
 				for (int angGrat = 0; angGrat < numStripes; angGrat++)
@@ -481,7 +546,7 @@ void RenderFrame(int direction)
 
 		// Clear the screen and apply
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glBindVertexArray(vao[1]);
+		glBindVertexArray(vao[3]);
 
 		glUniform1f(setColor, (int)0);
 		glUniform1f(cylLocation, (float) 1.0f); // Allow the projection to be distorted for the cylindrical screen using the shader
@@ -489,11 +554,11 @@ void RenderFrame(int direction)
 		ViewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, dist2stripe, 0), glm::vec3(0, 0, 1)); //Look at the center of the rectangle
 		glUniformMatrix4fv(ViewID, 1, false, glm::value_ptr(ViewMatrix));
 		glUniformMatrix4fv(ModelID, 1, false, glm::value_ptr(identity));
-		glUniform1f(ProjNumber, 1);  // Correct for the brightness difference between projectors
+		glUniform1f(ProjNumber, (int)1);  // Correct for the brightness difference between projectors
 
 		// Draw the rectangle
 		for (int n = 0; n < 3; n++) {
-			glBindTexture(GL_TEXTURE_2D, tex[1 + n]);
+			glBindTexture(GL_TEXTURE_2D, tex[1+n]);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(GLfloat)));
 		}
 

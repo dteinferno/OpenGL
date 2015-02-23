@@ -130,10 +130,10 @@ void TreadMillStart()
 void TreadMillDat()
 {
 	//Set the calibration factor
-	float Cam1RotCalibfact = 1.81;
-	float Cam2RotCalibfact = 1.36;
-	float Cam1PosCalibfact = 106;
-	float Cam2PosCalibfact = 140;
+	float Cam1RotCalibfact = 1.67;
+	float Cam2RotCalibfact = 1.37;
+	float Cam1PosCalibfact = 114;
+	float Cam2PosCalibfact = 139;
 
 	//Camera Data Bins
 	int dx[2], dy[2];
@@ -165,21 +165,39 @@ void TreadMillDat()
 		float deltaSide = (float)((float)dy[0] / Cam1PosCalibfact - (float)dy[1] / Cam2PosCalibfact)*sqrt(2) / 2;
 		//Update the offset given the ball movement
 		io_mutex.lock();
-		BallOffsetRot += (float)((float)dx[0] / Cam1RotCalibfact + (float)dx[1] / Cam2RotCalibfact) / 2;
+		BallOffsetRot += (float)((float)dx[0] * Cam1RotCalibfact + (float)dx[1] * Cam2RotCalibfact) / 2;
 		BallOffsetFor += deltaFor*cosf(BallOffsetRot * M_PI / 180) + deltaSide*sinf(BallOffsetRot * M_PI / 180);
 		BallOffsetSide += deltaFor*sinf(BallOffsetRot * M_PI / 180) - deltaSide*cosf(BallOffsetRot * M_PI / 180);
-		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(dist2stripe*0.95, 2))
+		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(18, 2))
 		{
-			BoundaryStopCorrection = pow(dist2stripe*0.95, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
+			BoundaryStopCorrection = pow(18, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
 			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
 			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
 		}
 
-		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) < pow(2, 2))
+		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) < pow(1.5, 2))
 		{
-			BoundaryStopCorrection = pow(2, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
+			BoundaryStopCorrection = pow(1.5, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
 			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
 			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
+		}
+
+		if (0)
+		{
+			if (pow(BallOffsetSide - 6, 2) + pow(BallOffsetFor, 2) < pow(1.5, 2))
+			{
+				BoundaryStopCorrection = pow(1.5, 2) / (pow(BallOffsetFor, 2) + pow((BallOffsetSide - 6), 2));
+				BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
+				BallOffsetSide = BoundaryStopCorrection * (BallOffsetSide - 6) + 6;
+			}
+
+
+			if (pow(BallOffsetSide + 6, 2) + pow(BallOffsetFor, 2) < pow(1.5, 2))
+			{
+				BoundaryStopCorrection = pow(1.5, 2) / (pow(BallOffsetFor, 2) + pow((BallOffsetSide + 6), 2));
+				BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
+				BallOffsetSide = BoundaryStopCorrection * (BallOffsetSide + 6) - 6;
+			}
 		}
 
 		dx0 += (float)dx[0];
