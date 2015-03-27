@@ -21,7 +21,7 @@ float BallOffsetRotNow = 0.0f;
 float BallOffsetForNow = 0.0f;
 float BallOffsetSideNow = 0.0f;
 
-// Variable to control the direction of the open loop stripe (+/-1) AND whether or not to display anything at all
+// Variable to control the direction of the open loop stripe (+/-1) AND whether or not to display anything at all (0)
 int olsdir;
 
 // Vertex shader which passes through the texture and position coordinates
@@ -51,9 +51,9 @@ const char* fragment_shader =
 
 "  float LtoScreen = 6.55;"
 "  float wofScreen = 1.93;"
-"  float proj0power = 35.8;"
-"  float proj1power = 43.8;"
-"  float proj2power = 26.4;"
+"  float proj0power = 1.14;"
+"  float proj1power = 1.07;"
+"  float proj2power = 1.04;"
 "  float projnorm = min(proj0power, min(proj1power, proj2power));"
 
 "  float angofScreen = 4*3.141592/9;"
@@ -145,12 +145,19 @@ glm::mat4 ModelMatrix;
 GLuint ModelID;
 
 // Constants for loading objects from the shader
-GLuint vbo_obj;
-GLuint uvbuffer_obj;
-GLuint normalsbuffer_obj;
-std::vector<glm::vec3> vertices_obj;
-std::vector<glm::vec2> uvs_obj;
-std::vector<glm::vec3> normals_obj;
+GLuint vbo_obj1;
+GLuint uvbuffer_obj1;
+GLuint normalsbuffer_obj1;
+std::vector<glm::vec3> vertices_obj1;
+std::vector<glm::vec2> uvs_obj1;
+std::vector<glm::vec3> normals_obj1;
+
+GLuint vbo_obj2;
+GLuint uvbuffer_obj2;
+GLuint normalsbuffer_obj2;
+std::vector<glm::vec3> vertices_obj2;
+std::vector<glm::vec2> uvs_obj2;
+std::vector<glm::vec3> normals_obj2;
 
 // InitOpenGL: initializes OpenGL; defines buffers, constants, etc...
 void InitOpenGL(void)
@@ -184,28 +191,28 @@ void InitOpenGL(void)
 	glBindVertexArray(vao[0]);
 
 	// Read our first .obj file
-	bool resdat = loadOBJ("d://OpenGL//BlenderObjects//Cylinder.obj", vertices_obj, uvs_obj, normals_obj);
+	bool resdat = loadOBJ("d://OpenGL//BlenderObjects//Cylinder.obj", vertices_obj1, uvs_obj1, normals_obj1);
 
-	glGenBuffers(1, &vbo_obj);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
-	glBufferData(GL_ARRAY_BUFFER, vertices_obj.size() * sizeof(glm::vec3), &vertices_obj[0], GL_STATIC_DRAW);
+	glGenBuffers(1, &vbo_obj1);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj1);
+	glBufferData(GL_ARRAY_BUFFER, vertices_obj1.size() * sizeof(glm::vec3), &vertices_obj1[0], GL_STATIC_DRAW);
 
-	glGenBuffers(1, &uvbuffer_obj);
-	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
-	glBufferData(GL_ARRAY_BUFFER, uvs_obj.size() * sizeof(glm::vec2), &uvs_obj[0], GL_STATIC_DRAW);
+	glGenBuffers(1, &uvbuffer_obj1);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj1);
+	glBufferData(GL_ARRAY_BUFFER, uvs_obj1.size() * sizeof(glm::vec2), &uvs_obj1[0], GL_STATIC_DRAW);
 
-	glGenBuffers(1, &normalsbuffer_obj);
-	glBindBuffer(GL_ARRAY_BUFFER, normalsbuffer_obj);
-	glBufferData(GL_ARRAY_BUFFER, normals_obj.size() * sizeof(glm::vec3), &normals_obj[0], GL_STATIC_DRAW);
+	glGenBuffers(1, &normalsbuffer_obj1);
+	glBindBuffer(GL_ARRAY_BUFFER, normalsbuffer_obj1);
+	glBufferData(GL_ARRAY_BUFFER, normals_obj1.size() * sizeof(glm::vec3), &normals_obj1[0], GL_STATIC_DRAW);
 
 	// Create a pointer for the position
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj1);
 	GLint posAttrib = glGetAttribLocation(shader_program, "position");
 	glEnableVertexAttribArray(posAttrib);
 	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	// Create a pointer for the texture coordinates
-	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj1);
 	GLint texAttrib = glGetAttribLocation(shader_program, "texcoord");
 	glEnableVertexAttribArray(texAttrib);
 	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
@@ -215,58 +222,36 @@ void InitOpenGL(void)
 	glBindVertexArray(vao[1]);
 
 	// Read our first .obj file
-	resdat = loadOBJ("d://OpenGL//BlenderObjects//FrontCyl.obj", vertices_obj, uvs_obj, normals_obj);
+	resdat = loadOBJ("d://OpenGL//BlenderObjects//FrontCyl.obj", vertices_obj2, uvs_obj2, normals_obj2);
 
-	glGenBuffers(1, &vbo_obj);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
-	glBufferData(GL_ARRAY_BUFFER, vertices_obj.size() * sizeof(glm::vec3), &vertices_obj[0], GL_STATIC_DRAW);
+	// Read our second .obj file
+	resdat = loadOBJ("d://OpenGL//BlenderObjects//BackCyl.obj", vertices_obj2, uvs_obj2, normals_obj2);
 
-	glGenBuffers(1, &uvbuffer_obj);
-	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
-	glBufferData(GL_ARRAY_BUFFER, uvs_obj.size() * sizeof(glm::vec2), &uvs_obj[0], GL_STATIC_DRAW);
+	glGenBuffers(1, &vbo_obj2);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj2);
+	glBufferData(GL_ARRAY_BUFFER, vertices_obj2.size() * sizeof(glm::vec3), &vertices_obj2[0], GL_STATIC_DRAW);
 
-	glGenBuffers(1, &normalsbuffer_obj);
-	glBindBuffer(GL_ARRAY_BUFFER, normalsbuffer_obj);
-	glBufferData(GL_ARRAY_BUFFER, normals_obj.size() * sizeof(glm::vec3), &normals_obj[0], GL_STATIC_DRAW);
+	glGenBuffers(1, &uvbuffer_obj2);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj2);
+	glBufferData(GL_ARRAY_BUFFER, uvs_obj2.size() * sizeof(glm::vec2), &uvs_obj2[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &normalsbuffer_obj2);
+	glBindBuffer(GL_ARRAY_BUFFER, normalsbuffer_obj2);
+	glBufferData(GL_ARRAY_BUFFER, normals_obj2.size() * sizeof(glm::vec3), &normals_obj2[0], GL_STATIC_DRAW);
 
 	// Create a pointer for the position
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj2);
 	glEnableVertexAttribArray(posAttrib);
 	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	// Create a pointer for the texture coordinates
-	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj2);
 	glEnableVertexAttribArray(texAttrib);
 	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	// Initialize the vertex array object for the object
-	glGenVertexArrays(1, &vao[2]);
-	glBindVertexArray(vao[2]);
-
-	// Read our second .obj file
-	resdat = loadOBJ("d://OpenGL//BlenderObjects//BackCyl.obj", vertices_obj, uvs_obj, normals_obj);
-
-	glGenBuffers(1, &vbo_obj);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
-	glBufferData(GL_ARRAY_BUFFER, vertices_obj.size() * sizeof(glm::vec3), &vertices_obj[0], GL_STATIC_DRAW);
-
-	glGenBuffers(1, &uvbuffer_obj);
-	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
-	glBufferData(GL_ARRAY_BUFFER, uvs_obj.size() * sizeof(glm::vec2), &uvs_obj[0], GL_STATIC_DRAW);
-
-	glGenBuffers(1, &normalsbuffer_obj);
-	glBindBuffer(GL_ARRAY_BUFFER, normalsbuffer_obj);
-	glBufferData(GL_ARRAY_BUFFER, normals_obj.size() * sizeof(glm::vec3), &normals_obj[0], GL_STATIC_DRAW);
-
-	// Create a pointer for the position
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_obj);
-	glEnableVertexAttribArray(posAttrib);
-	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-	// Create a pointer for the texture coordinates
-	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer_obj);
-	glEnableVertexAttribArray(texAttrib);
-	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	//glGenVertexArrays(1, &vao[2]);
+	//glBindVertexArray(vao[2]);
 
 	// Create our distorted screen
 	// Initialize the vertex array object
@@ -387,7 +372,7 @@ void InitOpenGL(void)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 
-	// Load a texture
+	// Load a texture using the SOIL loader
 	int texWidth, texHeight;
 	unsigned char* texImage = SOIL_load_image("d://OpenGL//Textures//SqNoise.png", &texWidth, &texHeight, 0, SOIL_LOAD_RGB);
 
@@ -397,7 +382,6 @@ void InitOpenGL(void)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	
 	
 	SOIL_free_image_data(texImage);
 
@@ -459,7 +443,7 @@ void RenderFrame(int direction)
 				BallOffsetSideNow = 0.0f;
 			}
 
-			if (stopped)
+			if (stopped) // Keep the scene fixed
 			{
 				BallOffsetRotNow = 0.0f;
 				BallOffsetForNow = 0.0f;
@@ -478,10 +462,10 @@ void RenderFrame(int direction)
 			if (closed)
 			{
 				// Draw the shapes
-				glBindVertexArray(vao[0]);
-				glDrawArrays(GL_TRIANGLES, 0, vertices_obj.size());
-				//glBindVertexArray(vao[1]);
-				//glDrawArrays(GL_TRIANGLES, 0, vertices_obj.size());
+				//glBindVertexArray(vao[0]);
+				//glDrawArrays(GL_TRIANGLES, 0, vertices_obj1.size());
+				glBindVertexArray(vao[1]);
+				glDrawArrays(GL_TRIANGLES, 0, vertices_obj2.size());
 				//glBindVertexArray(vao[2]);
 				//glDrawArrays(GL_TRIANGLES, 0, vertices_obj.size());
 			}
@@ -491,7 +475,7 @@ void RenderFrame(int direction)
 				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 			}
 
-
+			// Unused code for drawing other shapes
 			if (0){
 				// Grating
 				glBindVertexArray(vao[2]);

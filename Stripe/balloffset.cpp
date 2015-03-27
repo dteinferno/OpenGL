@@ -168,6 +168,8 @@ void TreadMillDat()
 		BallOffsetRot += (float)((float)dx[0] * Cam1RotCalibfact + (float)dx[1] * Cam2RotCalibfact) / 2;
 		BallOffsetFor += deltaFor*cosf(BallOffsetRot * M_PI / 180) + deltaSide*sinf(BallOffsetRot * M_PI / 180);
 		BallOffsetSide += deltaFor*sinf(BallOffsetRot * M_PI / 180) - deltaSide*cosf(BallOffsetRot * M_PI / 180);
+
+		// Apply barriers to keep the fly from going out of the arena or reaching an object
 		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) > pow(18, 2))
 		{
 			BoundaryStopCorrection = pow(18, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
@@ -175,28 +177,29 @@ void TreadMillDat()
 			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
 		}
 
-		if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) < pow(1.5, 2))
+		if (pow(BallOffsetSide - 6, 2) + pow(BallOffsetFor, 2) < pow(1.5, 2))
 		{
-			BoundaryStopCorrection = pow(1.5, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
+			BoundaryStopCorrection = pow(1.5, 2) / (pow(BallOffsetFor, 2) + pow((BallOffsetSide - 6), 2));
 			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
-			BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
+			BallOffsetSide = BoundaryStopCorrection * (BallOffsetSide - 6) + 6;
 		}
 
+
+		if (pow(BallOffsetSide + 6, 2) + pow(BallOffsetFor, 2) < pow(1.5, 2))
+		{
+			BoundaryStopCorrection = pow(1.5, 2) / (pow(BallOffsetFor, 2) + pow((BallOffsetSide + 6), 2));
+			BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
+			BallOffsetSide = BoundaryStopCorrection * (BallOffsetSide + 6) - 6;
+		}
+
+		// Unused barriers for different objects
 		if (0)
 		{
-			if (pow(BallOffsetSide - 6, 2) + pow(BallOffsetFor, 2) < pow(1.5, 2))
+			if (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2) < pow(1.5, 2))
 			{
-				BoundaryStopCorrection = pow(1.5, 2) / (pow(BallOffsetFor, 2) + pow((BallOffsetSide - 6), 2));
+				BoundaryStopCorrection = pow(1.5, 2) / (pow(BallOffsetFor, 2) + pow(BallOffsetSide, 2));
 				BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
-				BallOffsetSide = BoundaryStopCorrection * (BallOffsetSide - 6) + 6;
-			}
-
-
-			if (pow(BallOffsetSide + 6, 2) + pow(BallOffsetFor, 2) < pow(1.5, 2))
-			{
-				BoundaryStopCorrection = pow(1.5, 2) / (pow(BallOffsetFor, 2) + pow((BallOffsetSide + 6), 2));
-				BallOffsetFor = BoundaryStopCorrection * BallOffsetFor;
-				BallOffsetSide = BoundaryStopCorrection * (BallOffsetSide + 6) - 6;
+				BallOffsetSide = BoundaryStopCorrection * BallOffsetSide;
 			}
 		}
 

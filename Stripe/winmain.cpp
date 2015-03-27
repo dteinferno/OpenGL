@@ -7,6 +7,7 @@
 // winmain - create the windows and run the main loop                             //
 // balloffset - programs to calculate the offset of the stripe for                //
 //    open and closed loop stripes                                                //
+// DAQ - save the frame trigger and the VR PD signal                              //
 // glmain - contains the OpenGl rendering code                                    //
 // system - system shutdown                                                       //
 ////////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +30,7 @@ and segments of Jim Strother's Win API code
 // Open loop or closed loop
 int closed;
 
-// Update visual stim or stop
+// Update visual stim or stop the update
 int stopped = 0;
 
 // Filename for the synchronization file
@@ -214,7 +215,6 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 	i = strftime(s, 30, "%b %d, %Y; %H:%M:%S\n", &tim);
 	fprintf(str, "Current date and time: %s\n", s);
 
-
 	// Variables to store the treadmill update signal
 	float dx0Now = 0.0f;
 	float dx1Now = 0.0f;
@@ -257,7 +257,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 			srand(time(0));
 			io_mutex.lock();
 			BallOffsetRot = fmod(rand(), 180) - 90;
-			BallOffsetFor = -dist2stripe*0.5;
+			BallOffsetFor = 0.0f;//-dist2stripe*0.5;
 			BallOffsetSide = 0.0f;
 			io_mutex.unlock();
 			randomreset = 0;
@@ -269,17 +269,22 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline
 			closed = 1;
 			olsdir = 0;
 		}
-		if (netTime > 1 && netTime < 2 * 60)
+		if (netTime > 1 && netTime < 0.5 * 60)
 		{
 			closed = 1;		
+			olsdir = 0;
+		}
+		if (netTime > 0.5 * 60 && netTime < 4.5 * 60)
+		{
+			closed = 1;
 			olsdir = 1;
 		}
-		if (netTime > 2 * 60 && netTime < 3 * 60)
+		if (netTime > 4.5 * 60 && netTime < 5 * 60)
 		{
 			closed = 1;
 			olsdir = 0;
 		}
-		if (netTime > 3 * 60)
+		if (netTime > 5 * 60)
 			break;
 		////////////////////////////////////////////////////////////////////////////////////
 
